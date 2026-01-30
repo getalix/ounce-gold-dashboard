@@ -100,19 +100,20 @@
         }
 
         .nav-datetime {
-            font-size: 13px;
-            font-weight: 800;
-            color: #999;
-            font-family: 'Courier New', monospace;
-            letter-spacing: 0.5px;
+            font-size: 14px;
+            font-weight: 900;
+            color: #667eea;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            letter-spacing: 0.3px;
+            line-height: 1.2;
         }
 
         body.dark-mode .nav-datetime {
-            color: #ffffff;
+            color: #7dd3ff;
         }
 
         body.light-mode .nav-datetime {
-            color: #000;
+            color: #667eea;
         }
 
         .nav-bot-name {
@@ -151,7 +152,7 @@
             overflow: visible;
             scroll-behavior: smooth;
             gap: 0;
-            padding: 8px;
+            padding: 10px 8px;
             background: rgba(0, 0, 0, 0.45);
             justify-content: center;
             align-items: center;
@@ -180,20 +181,20 @@
         .nav-tab {
             flex: 1;
             min-width: 70px;
-            padding: 11px 18px;
+            padding: 13px 18px;
             text-align: center;
             cursor: pointer;
             border: none;
             background: transparent;
             color: rgba(255, 255, 255, 0.65);
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
             white-space: nowrap;
-            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transition: all 0.45s cubic-bezier(0.4, 0.0, 0.2, 1);
             border-radius: 24px;
             -webkit-tap-highlight-color: transparent;
             position: relative;
-            min-height: 40px;
+            min-height: 42px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -213,8 +214,21 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.25);
             border: none;
-            transform: scale(1.08);
+            transform: translateX(0);
             font-weight: 700;
+            animation: slideIn 0.45s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        @keyframes slideIn {
+            0% {
+                transform: translateX(-20px);
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         body.dark-mode .nav-tab.active {
@@ -254,15 +268,17 @@
             padding: 15px 10px;
             position: sticky;
             top: 0;
-            background: #121212;
+            background: rgba(18, 18, 18, 0.7);
+            backdrop-filter: blur(15px);
             z-index: 991;
             transition: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         body.light-mode .search-container {
-            background: linear-gradient(135deg, #eff2f5 0%, #e0e5eb 100%);
-            border-bottom-color: rgba(0, 0, 0, 0.1);
+            background: rgba(239, 242, 245, 0.7);
+            backdrop-filter: blur(15px);
+            border-bottom-color: rgba(0, 0, 0, 0.08);
         }
 
         .search-wrapper {
@@ -937,7 +953,7 @@
     <div class="bottom-nav" id="bottomNav">
         <div class="nav-header">
             <div class="nav-datetime"><span id="navDate">--/--/--</span> <span id="navTime">--:--</span></div>
-            <div class="nav-bot-name">@OunceGoldBot</div>
+            <div class="nav-bot-name">OunceGoldBot@</div>
             <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()">🌙</button>
         </div>
         <div class="nav-tabs">
