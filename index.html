@@ -613,14 +613,23 @@
             const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
             const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
 
-            const icon = item.path_icon ? `${item.path_icon.split('.')[0]}` : '💰';
+            // ساخت آدرس آیکن از API
+            let iconElement = '';
+            if (item.url_base_icon && item.path_icon) {
+                const iconUrl = `${item.url_base_icon}/64x64/${item.path_icon}`;
+                iconElement = `<img src="${iconUrl}" alt="${item.symbol}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain;" onerror="this.style.display='none'">`;
+            } else {
+                iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; font-size: 24px;">💰</div>`;
+            }
 
             const price = formatPrice(Math.round(item.price));
             const changeValue = formatPrice(Math.abs(item.change_value || 0));
 
             card.innerHTML = `
                 <div class="card-header">
-                    <div class="card-icon">${icon}</div>
+                    <div class="card-icon">
+                        ${iconElement}
+                    </div>
                     <div class="card-title">
                         <h3>${item.name}</h3>
                         <span class="symbol">${item.symbol}</span>
@@ -644,7 +653,7 @@
                         <div class="change-label">تغییر درصد</div>
                         <div class="change-value ${changeClass}">
                             ${changeIcon}
-                            ${toPersianDigits((change).toFixed(2))}%
+                            <span>${toPersianDigits(Math.abs(change).toFixed(2))}%</span>
                         </div>
                     </div>
                 </div>
@@ -779,8 +788,9 @@
                                     const originalData = sortedData[idx];
                                     const price = formatPrice(Math.round(originalData.price));
                                     const change = originalData.change_percent.toFixed(2);
-                                    const changeIcon = originalData.change_percent > 0 ? '📈' : originalData.change_percent < 0 ? '📉' : '⚖️';
-                                    return `قیمت: ${price}\\nتغییر: ${changeIcon} ${change}%`;
+                                    const changeIcon = originalData.change_percent > 0 ? '📈 +' : originalData.change_percent < 0 ? '📉 -' : '⚖️ ';
+                                    const absChange = Math.abs(change);
+                                    return `قیمت: ${price}\nتغییر: ${changeIcon}${absChange}%`;
                                 },
                                 title: function (context) {
                                     const idx = context[0].dataIndex;
