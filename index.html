@@ -108,8 +108,9 @@
 
         .nav-bot-name {
             font-size: 14px;
-            font-weight: 700;
+            font-weight: 400;
             color: #999;
+            opacity: 0.8;
             flex: 1;
             text-align: center;
         }
@@ -125,6 +126,11 @@
             cursor: pointer;
             padding: 5px 10px;
             transition: transform 0.2s;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .theme-toggle:active {
@@ -526,6 +532,7 @@
             max-width: 800px;
             width: 95%;
             max-height: 90vh;
+            overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
 
@@ -780,83 +787,6 @@
             border-radius: 8px;
             margin-bottom: 20px;
         }
-
-        /* ===== Scroll to Top Button ===== */
-        #scrollToTopBtn {
-            display: none;
-            position: fixed;
-            bottom: 155px;
-            left: 20px;
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border: none;
-            border-radius: 50%;
-            cursor: pointer;
-            z-index: 996;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-            transition: all 0.3s ease;
-            animation: slideUp 0.3s ease;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        @keyframes slideUp {
-            from {
-                transform: translateY(100px);
-                opacity: 0;
-            }
-
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes slideDown {
-            from {
-                transform: translateY(0);
-                opacity: 1;
-            }
-
-            to {
-                transform: translateY(100px);
-                opacity: 0;
-            }
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        #scrollToTopBtn.hide {
-            animation: slideDown 0.3s ease forwards;
-        }
-
-        #scrollToTopBtn:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-        }
-
-        #scrollToTopBtn:active {
-            transform: translateY(0);
-        }
-
-        @media (max-width: 768px) {
-            #scrollToTopBtn {
-                bottom: 20px;
-                left: 20px;
-                width: 45px;
-                height: 45px;
-                font-size: 20px;
-            }
-        }
     </style>
 </head>
 
@@ -899,14 +829,9 @@
         </div>
     </div>
 
-    <!-- Scroll to Top Button -->
-    <button id="scrollToTopBtn" onclick="scrollToTop()">
-        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" stroke="white"
-            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-            style="user-select: none; pointer-events: none;">
-            <path d="M12 5v14M5 12l7-7 7 7" />
-        </svg>
-    </button>
+    <!-- Scroll to Top Button - Hidden -->
+    <!-- دکمه scroll to top دیگر نیاز نیست چون صفحه در switchTab خودکار به بالا می‌رود -->
+
 
     <!-- Bottom Navigation Bar -->
     <div class="bottom-nav" id="bottomNav">
@@ -1038,21 +963,12 @@
             }
         }
 
-        // Advanced Scroll Manager
+        // Simplified Scroll Manager
         let lastScrollTop = 0;
-        let isScrollingToTop = false;
-        let isVisible = false;
 
         window.addEventListener('scroll', () => {
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
             const bottomNav = document.getElementById('bottomNav');
-            const scrollBtn = document.getElementById('scrollToTopBtn');
-
-            // اگر در حال scroll to top هستیم، snack bar نباید جنبش کند
-            if (isScrollingToTop) {
-                bottomNav.classList.remove('hidden');
-                return;
-            }
 
             // منطق snack bar
             if (scrollTop > lastScrollTop && scrollTop > 200) {
@@ -1061,23 +977,6 @@
             } else {
                 // scrolling up
                 bottomNav.classList.remove('hidden');
-            }
-
-            // منطق scroll button
-            if (scrollTop > 300) {
-                if (!isVisible) {
-                    scrollBtn.classList.remove('hide');
-                    scrollBtn.style.display = 'flex';
-                    isVisible = true;
-                }
-            } else {
-                if (isVisible) {
-                    scrollBtn.classList.add('hide');
-                    setTimeout(() => {
-                        scrollBtn.style.display = 'none';
-                    }, 300);
-                    isVisible = false;
-                }
             }
 
             lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
@@ -1089,6 +988,11 @@
             document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
             event.target.classList.add('active');
             filterAndRender();
+            // صفحه را به بالا ببر
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
         }
 
         // Fetch Data from API (via Cloudflare Worker Proxy)
@@ -1612,23 +1516,6 @@
 
         // Auto Refresh Every Minute
         setInterval(fetchData, 60000);
-
-        // Scroll to Top Function
-        function scrollToTop() {
-            isScrollingToTop = true;
-            const bottomNav = document.getElementById('bottomNav');
-            bottomNav.classList.remove('hidden');
-
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-
-            // تنظیم flag پس از اتمام scroll
-            setTimeout(() => {
-                isScrollingToTop = false;
-            }, 1000);
-        }
     </script>
 </body>
 
