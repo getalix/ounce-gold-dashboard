@@ -16,12 +16,26 @@
             box-sizing: border-box;
         }
 
+        *::selection {
+            background: transparent;
+            color: inherit;
+        }
+
+        *::-moz-selection {
+            background: transparent;
+            color: inherit;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 10px;
             color: #333;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
 
         .container {
@@ -206,6 +220,7 @@
             pointer-events: none;
             cursor: default;
             display: block;
+            -webkit-touch-callout: none;
         }
 
         .card-title {
@@ -660,23 +675,42 @@
                 iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">💰</div>`;
             }
 
-            // برای ارزهای دیجیتال (crypto) از price_toman استفاده کن
+            // برای ارزهای دیجیتال (crypto) دو قیمت نمایش بده (دلاری و تومانی)
             let price = item.price;
             let unit = item.unit;
+            let priceDisplay = '';
 
             if (item.type === 'crypto') {
-                // اگر USDT باشد، قیمت دلاری همیشه 1 است
+                // قیمت دلاری
+                let dollarPrice = item.price;
                 if (item.symbol === 'USDT') {
-                    price = '1';
-                    unit = 'دلار';
-                } else {
-                    // برای بقیه ارزهای دیجیتال، از price_toman استفاده کن
-                    price = item.price_toman;
-                    unit = 'تومان';
+                    dollarPrice = '1';
                 }
+                const formattedDollarPrice = formatPrice(dollarPrice);
+
+                // قیمت تومانی
+                const formattedTomanPrice = formatPrice(item.price_toman);
+
+                priceDisplay = `
+                    <div class="card-price">
+                        ${formattedDollarPrice}
+                        <span class="unit">دلار</span>
+                    </div>
+                    <div class="card-price" style="color: #764ba2; margin-bottom: 5px;">
+                        ${formattedTomanPrice}
+                        <span class="unit">تومان</span>
+                    </div>
+                `;
+            } else {
+                price = formatPrice(price);
+                priceDisplay = `
+                    <div class="card-price">
+                        ${price}
+                        <span class="unit">${unit}</span>
+                    </div>
+                `;
             }
 
-            price = formatPrice(price);
             const changeValue = formatPrice(Math.abs(item.change_value || 0));
 
             card.innerHTML = `
@@ -690,10 +724,7 @@
                     </div>
                 </div>
                 
-                <div class="card-price">
-                    ${price}
-                    <span class="unit">${unit}</span>
-                </div>
+                ${priceDisplay}
                 
                 <div class="card-change">
                     <div class="change-item">
