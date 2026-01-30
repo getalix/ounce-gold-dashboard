@@ -1,1304 +1,1573 @@
-// Cloudflare Workers - Gold Price Bot
-// APIs used: BrsApi.ir for gold prices, Telegram Bot API for messages
-// Database: Cloudflare D1 for user tracking
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
 
-const GOLD_API_URL = 'https://BrsApi.ir/Api/Market/Gold_Currency_Pro.php';
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اُنس طلا - قیمت لحظه‌ای طلا، ارز و رمزارز</title>
 
-// ❌ سیستم مدیریت خطا و جلوگیری از تکرار
-const ERROR_COOLDOWN_MINUTES = 15; // مدت زمان خاموشی پس از خطا
-const ERROR_KEY_PREFIX = 'error_';
-const ERROR_ATTEMPT_KEY = 'error_attempts';
-const MAX_ATTEMPTS_BEFORE_COOLDOWN = 3; // تعداد تلاش‌های مجاز قبل از cooldown
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="https://cdn.imgurl.ir/uploads/o361389_Picsart_26-01-30_17-44-50-500.png"
+        sizes="any">
+    <link rel="icon" type="image/png" href="https://cdn.imgurl.ir/uploads/o361389_Picsart_26-01-30_17-44-50-500.png"
+        sizes="96x96">
+    <link rel="apple-touch-icon" href="https://cdn.imgurl.ir/uploads/o361389_Picsart_26-01-30_17-44-50-500.png"
+        sizes="192x192">
 
-/**
- * Parse admin IDs from comma-separated string
- * Example: "123456,789012,345678" → [123456, 789012, 345678]
- */
-function parseAdminIds(adminIdsString) {
-    if (!adminIdsString) return [];
-    return adminIdsString
-        .split(',')
-        .map(id => parseInt(id.trim()))
-        .filter(id => !isNaN(id));
-}
+    <!-- Chart.js برای نمودارها -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-/**
- * Check if user is admin
- */
-function isAdmin(userId, adminIds) {
-    return adminIds.includes(userId);
-}
-
-/**
- * Get user state (e.g., 'main_menu', 'admin_panel')
- */
-async function getUserState(kvNamespace, userId) {
-    try {
-        if (!kvNamespace) return 'main_menu';
-        const state = await kvNamespace.get(`user_state_${userId}`);
-        return state || 'main_menu';
-    } catch (error) {
-        console.warn('⚠️ Error getting user state:', error.message);
-        return 'main_menu';
-    }
-}
-
-/**
- * Set user state
- */
-async function setUserState(kvNamespace, userId, state) {
-    try {
-        if (!kvNamespace) return;
-        await kvNamespace.put(`user_state_${userId}`, state);
-        console.log(`👤 User ${userId} state changed to: ${state}`);
-    } catch (error) {
-        console.warn('⚠️ Error setting user state:', error.message);
-    }
-}
-
-/**
- * بررسی اینکه آیا سیستم در حالت خاموشی (cooldown) است
- */
-async function isInErrorCooldown(kvNamespace, errorType) {
-    try {
-        const cooldownKey = `${ERROR_KEY_PREFIX}${errorType}_cooldown`;
-        const cooldownTime = await kvNamespace.get(cooldownKey);
-
-        if (!cooldownTime) {
-            return false;
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        const cooldownUntil = parseInt(cooldownTime);
-        const now = Date.now();
-
-        if (now < cooldownUntil) {
-            console.log(`⏸️ ${errorType}: درحالت خاموشی تا ${new Date(cooldownUntil).toISOString()}`);
-            return true;
+        *::selection {
+            background: transparent;
+            color: inherit;
         }
 
-        // Cooldown منقضی شده، پاک کن
-        await kvNamespace.delete(cooldownKey);
-        console.log(`✅ ${errorType}: خاموشی تمام شد، تلاش دوباره`);
-        return false;
-    } catch (error) {
-        console.error('خطا در بررسی cooldown:', error);
-        return false;
-    }
-}
-
-/**
- * ثبت خطا و فعال‌کردن cooldown - کم‌ترین KV writes ممکن
- */
-async function recordError(kvNamespace, errorType, errorMessage) {
-    try {
-        const cooldownKey = `${ERROR_KEY_PREFIX}${errorType}_cooldown`;
-        const errorCountKey = `${ERROR_KEY_PREFIX}${errorType}_count`;
-
-        // شمارش تلاش‌های متوالی
-        const countStr = await kvNamespace.get(errorCountKey);
-        const count = countStr ? parseInt(countStr) + 1 : 1;
-
-        console.log(`❌ ${errorType}: خطا #${count} - ${errorMessage}`);
-
-        // اگر بیش از حد تلاش کرده، cooldown فعال کن
-        if (count >= MAX_ATTEMPTS_BEFORE_COOLDOWN) {
-            const cooldownUntil = Date.now() + (ERROR_COOLDOWN_MINUTES * 60 * 1000);
-            // batch write: شمارش + cooldown را همزمان ذخیره کن
-            await Promise.all([
-                kvNamespace.put(errorCountKey, count.toString()),
-                kvNamespace.put(cooldownKey, cooldownUntil.toString())
-            ]);
-            console.log(`🔇 ${errorType}: خاموشی فعال شد برای ${ERROR_COOLDOWN_MINUTES} دقیقه`);
-            return 'COOLDOWN_ACTIVATED';
-        } else {
-            // فقط شمارش رو آپدیت کن (یک write به جای 2-3 writes)
-            await kvNamespace.put(errorCountKey, count.toString());
+        *::-moz-selection {
+            background: transparent;
+            color: inherit;
         }
 
-        return 'ERROR_RECORDED';
-    } catch (error) {
-        // اگر KV limit شد، فقط لاگ کن - ریتورن نده تا webhook بشکند
-        console.error('⚠️ خطا در ثبت خطا:', error.message);
-        // اگر قبلاً کول‌داون بود، فرض کن این بار هم است
-        return 'ERROR_SUPPRESSED';
-    }
-}
-
-/**
- * پاک کردن وضعیت خطا (بعد از موفقیت)
- */
-async function clearErrorStatus(kvNamespace, errorType) {
-    try {
-        const errorCountKey = `${ERROR_KEY_PREFIX}${errorType}_count`;
-        await kvNamespace.delete(errorCountKey);
-        console.log(`✅ ${errorType}: وضعیت خطا پاک شد`);
-    } catch (error) {
-        // اگر حتی delete هم fail شود، silent ignore کن
-        console.warn(`⚠️ خطا در پاک کردن وضعیت: ${error.message}`);
-    }
-}
-
-/**
- * Fetch currency data (USD) from API
- */
-async function fetchCurrencyData(apiKey) {
-    try {
-        const url = new URL(GOLD_API_URL);
-        url.searchParams.append('key', apiKey);
-        url.searchParams.append('section', 'currency');
-
-        const response = await fetch(url.toString());
-        const data = await response.json();
-
-        console.log('💵 Currency API Response - successful:', data.successful);
-
-        if (!data.successful) {
-            console.error('❌ API unsuccessful:', data.message_error);
-            return null;
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+            min-height: 100vh;
+            padding: 0;
+            color: #333;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            transition: background 0.3s ease;
         }
 
-        if (!data.currency) {
-            console.error('❌ No currency data in response');
-            console.log('📊 Available keys:', Object.keys(data));
-            return null;
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            color: #e0e0e0;
         }
 
-        let usd = null;
-
-        // Recursive search برای USD در تمام structures
-        function findUSD(obj, depth = 0) {
-            if (depth > 5) return null; // جلوگیری از infinite loop
-
-            if (!obj) return null;
-
-            if (Array.isArray(obj)) {
-                console.log(`📊 Array with ${obj.length} items`);
-                return obj.find(c => c?.symbol === 'USD' || c?.symbol === 'usd');
-            }
-
-            if (typeof obj === 'object') {
-                // مستقیم چک
-                if (obj.symbol === 'USD' || obj.symbol === 'usd') return obj;
-
-                // به عنوان key
-                if (obj.USD) return obj.USD;
-                if (obj.usd) return obj.usd;
-
-                // جستجو در properties
-                for (const [key, value] of Object.entries(obj)) {
-                    if (value && typeof value === 'object') {
-                        if (value.symbol === 'USD' || value.symbol === 'usd') return value;
-                        const found = findUSD(value, depth + 1);
-                        if (found) return found;
-                    }
-                }
-            }
-            return null;
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
         }
 
-        usd = findUSD(data.currency);
-
-        if (usd) {
-            console.log(`✅ Found USD: ${usd.price}`);
-            return {
-                price: usd.price,
-                name: usd.name || 'USD',
-                date: usd.date,
-                time: usd.time
-            };
+        /* Top Status Bar */
+        .top-bar {
+            background: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
         }
 
-        console.error('❌ USD not found in currency data');
-        console.log('📋 Full structure:', JSON.stringify(data.currency).substring(0, 500));
-        return null;
-    } catch (error) {
-        console.error('❌ Error fetching currency data:', error.message);
-        return null;
-    }
-}
-
-/**
- * Fetch all gold types from API
- */
-async function fetchAllGoldTypes(apiKey) {
-    try {
-        const url = new URL(GOLD_API_URL);
-        url.searchParams.append('key', apiKey);
-        url.searchParams.append('section', 'gold');
-
-        const response = await fetch(url.toString());
-        const data = await response.json();
-
-        console.log('API Response successful:', data.successful);
-
-        if (data.successful && data.gold) {
-            return data.gold;
+        body.dark-mode .top-bar {
+            background: #2d2d2d;
+            border-bottom-color: #444;
         }
 
-        console.error('❌ Failed to fetch gold types:', data.message_error);
-        return null;
-    } catch (error) {
-        console.error('Error fetching gold types:', error);
-        return null;
-    }
-}
+        .top-bar .time-date {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+            color: #666;
+        }
 
-/**
- * Fetch gold price from API and compare with previous price
- */
-async function fetchGoldPrice(apiKey, kvNamespace) {
-    try {
-        const url = new URL(GOLD_API_URL);
-        url.searchParams.append('key', apiKey);
-        url.searchParams.append('section', 'gold');
+        body.dark-mode .top-bar .time-date {
+            color: #aaa;
+        }
 
-        const response = await fetch(url.toString());
-        const data = await response.json();
+        .top-bar .time {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
 
-        console.log('API Response successful:', data.successful);
+        body.dark-mode .top-bar .time {
+            color: #fff;
+        }
 
-        if (data.successful) {
-            // Get gold ounce (انس طلا)
-            if (data.gold && data.gold.ounce && data.gold.ounce.length > 0) {
-                const goldOunce = data.gold.ounce[0];
+        .top-bar .bot-name {
+            text-align: center;
+        }
 
-                console.log('Gold Ounce found:', goldOunce.name);
+        .top-bar .bot-name .name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+        }
 
-                // Get previous price from KV
-                const previousPriceStr = await kvNamespace.get('lastPrice');
-                const previousPrice = previousPriceStr ? parseFloat(previousPriceStr) : null;
+        .top-bar .bot-name .emoji {
+            font-size: 16px;
+        }
 
-                console.log(`Previous price: ${previousPrice}, Current price: ${goldOunce.price}`);
+        .top-bar .theme-toggle {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            transition: transform 0.2s;
+        }
 
-                // Calculate change if we have a previous price
-                let changeValue = goldOunce.change_value;
-                let changePercent = goldOunce.change_percent;
+        .top-bar .theme-toggle:hover {
+            transform: scale(1.1);
+        }
 
-                if (previousPrice !== null) {
-                    changeValue = goldOunce.price - previousPrice;
-                    changePercent = (changeValue / previousPrice) * 100;
-                    console.log(`Calculated change: ${changeValue}, Percent: ${changePercent}%`);
-                }
+        /* ===== Loading Spinner ===== */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
 
-                // Store current price for next comparison
-                await kvNamespace.put('lastPrice', goldOunce.price.toString());
-                console.log(`Stored price in KV: ${goldOunce.price}`);
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
 
-                return {
-                    price: goldOunce.price,
-                    changeValue: changeValue,
-                    changePercent: changePercent,
-                    date: goldOunce.date,
-                    time: goldOunce.time,
-                    name: goldOunce.name,
-                    symbol: goldOunce.symbol,
-                    unit: goldOunce.unit
-                };
-            } else {
-                console.error('❌ No gold ounce data found in response');
-                return null;
+        /* ===== Loading Spinner ===== */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
             }
         }
 
-        console.error('❌ API returned unsuccessful:', data.message_error);
-        return null;
-    } catch (error) {
-        console.error('Error fetching gold price:', error);
-        return null;
-    }
-}
-
-/**
- * Calculate real gold price (Ounce) considering USD rate
- * Formula: realPrice = (Ounce_Price × USD_Rate) ÷ 41.47
- */
-async function calculateGoldRealPrice(apiKey) {
-    try {
-        console.log('🔍 شروع محاسبه قیمت واقعی طلا...');
-
-        // Fetch gold ounce price
-        console.log('📥 دریافت قیمت انس جهانی...');
-        const goldData = await fetchAllGoldTypes(apiKey);
-
-        if (!goldData) {
-            console.error('❌ خطا: اطلاعات طلا دریافت نشد');
-            return null;
-        }
-        console.log('✅ اطلاعات طلا دریافت شد');
-
-        // Fetch USD
-        console.log('📥 دریافت نرخ دلار...');
-        const usdData = await fetchCurrencyData(apiKey);
-
-        if (!usdData) {
-            console.error('❌ خطا: نرخ دلار دریافت نشد');
-            return null;
-        }
-        console.log('✅ نرخ دلار دریافت شد:', usdData.price);
-
-        // Find ounce (انس جهانی)
-        if (!goldData.ounce || !Array.isArray(goldData.ounce) || goldData.ounce.length === 0) {
-            console.error('❌ انس جهانی یافت نشد');
-            return null;
+        /* ===== Main Content Area ===== */
+        .content-wrapper {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            position: relative;
         }
 
-        const goldOunce = goldData.ounce[0];
-        console.log('✅ انس جهانی پیدا شد:', goldOunce.name, '- قیمت:', goldOunce.price);
+        .pages-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.3s ease-out;
+        }
 
-        // Calculate: (Ounce price * USD price) / 41.47
-        const realPrice = (goldOunce.price * usdData.price) / 41.47;
+        .page {
+            flex: 0 0 100%;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            padding: 15px;
+            padding-bottom: 100px;
+            scroll-behavior: smooth;
+        }
 
-        console.log(`📐 محاسبه: (${goldOunce.price} × ${usdData.price}) ÷ 41.47 = ${realPrice}`);
-        console.log('✅ قیمت واقعی محاسبه شد:', Math.round(realPrice));
+        /* ===== Price Grid ===== */
+        .price-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
 
-        return {
-            ouncePrice: goldOunce.price,
-            ounceName: goldOunce.name,
-            usdPrice: usdData.price,
-            realPrice: realPrice,
-            date: goldOunce.date,
-            time: goldOunce.time
+        .price-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .price-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .price-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            cursor: default;
+            pointer-events: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .card-icon img {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            -webkit-user-drag: none;
+            pointer-events: none;
+            cursor: default;
+            display: block;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .card-title {
+            flex: 1;
+        }
+
+        .card-title h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .card-title .symbol {
+            font-size: 13px;
+            color: #999;
+            font-weight: 500;
+        }
+
+        .card-price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+
+        .card-price .unit {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .card-change {
+            display: flex;
+            gap: 15px;
+            padding: 10px 0;
+            border-top: 1px solid #f0f0f0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .change-item {
+            flex: 1;
+        }
+
+        .change-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .change-value {
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .change-value.up {
+            color: #10b981;
+        }
+
+        .change-value.down {
+            color: #ef4444;
+        }
+
+        .change-value.neutral {
+            color: #999;
+        }
+
+        .card-footer {
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .chart-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+            width: 100%;
+            transition: all 0.3s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .chart-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* ===== Modal ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 800px;
+            width: 95%;
+            max-height: 90vh;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            color: #333;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #999;
+            transition: all 0.3s;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 768px) {
+            .price-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .filter-tabs {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .modal-content {
+                padding: 20px;
+            }
+        }
+
+        /* ===== Empty State ===== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+
+        .empty-state-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* ===== Update Time ===== */
+        .update-info {
+            background: white;
+            border-radius: 10px;
+            padding: 10px 15px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 20px;
+        }
+
+        .update-info .time {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        /* ===== Skeleton Loading ===== */
+        .skeleton-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .skeleton-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .skeleton-element {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        @keyframes skeleton-loading {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .skeleton-header {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .skeleton-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+
+        .skeleton-title {
+            flex: 1;
+        }
+
+        .skeleton-title .line {
+            height: 16px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+
+        .skeleton-title .line:last-child {
+            width: 60%;
+        }
+
+        .skeleton-price {
+            height: 24px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .skeleton-change {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .skeleton-change-item {
+            flex: 1;
+        }
+
+        .skeleton-change-item .line {
+            height: 14px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+        }
+
+        .skeleton-footer {
+            height: 12px;
+            width: 70%;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .skeleton-btn {
+            height: 32px;
+            border-radius: 6px;
+        }
+
+        /* ===== Chart Modal Loading ===== */
+        .modal-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .modal-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e0e0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Chart Skeleton */
+        .chart-skeleton {
+            height: 400px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        /* ===== Scroll to Top Button ===== */
+        /* ===== Scroll to Top Button ===== */
+        #scrollToTopBtn {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 999;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            animation: slideUp 0.3s ease;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+        }
+
+        #scrollToTopBtn.hide {
+            animation: slideDown 0.3s ease forwards;
+        }
+
+        #scrollToTopBtn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        #scrollToTopBtn:active {
+            transform: translateY(0);
+        }
+
+        /* ===== Bottom Tab Bar ===== */
+        .bottom-tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            z-index: 998;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+            padding-top: 8px;
+            padding-bottom: 8px;
+        }
+
+        body.dark-mode .bottom-tab-bar {
+            background: #2d2d2d;
+            border-top-color: #444;
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            padding: 0 15px;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .tab-item.active {
+            color: #667eea;
+        }
+
+        body.dark-mode .tab-item {
+            color: #888;
+        }
+
+        body.dark-mode .tab-item.active {
+            color: #667eea;
+        }
+
+        .tab-item-icon {
+            font-size: 24px;
+        }
+
+        .tab-item-label {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            #scrollToTopBtn {
+                bottom: 20px;
+                left: 20px;
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Top Status Bar -->
+        <div class="top-bar">
+            <div class="time-date">
+                <div class="time" id="currentTime">--:--</div>
+                <div id="currentDate">--/--/--</div>
+            </div>
+            <div class="bot-name">
+                <div class="emoji">🤖</div>
+                <div class="name">@OunceGoldBot</div>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()" title="تغییر تم">🌙</button>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="content-wrapper">
+            <div class="pages-container" id="pagesContainer">
+                <!-- Page 1: All -->
+                <div class="page" id="page-all">
+                    <div class="price-grid" id="priceGrid-all"></div>
+                </div>
+
+                <!-- Page 2: Gold -->
+                <div class="page" id="page-gold">
+                    <div class="price-grid" id="priceGrid-gold"></div>
+                </div>
+
+                <!-- Page 3: Currency -->
+                <div class="page" id="page-currency">
+                    <div class="price-grid" id="priceGrid-currency"></div>
+                </div>
+
+                <!-- Page 4: Crypto -->
+                <div class="page" id="page-crypto">
+                    <div class="price-grid" id="priceGrid-crypto"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Tab Bar -->
+        <div class="bottom-tab-bar">
+            <div class="tab-item active" onclick="switchPage(0)">
+                <div class="tab-item-icon">📊</div>
+                <div class="tab-item-label">همه</div>
+            </div>
+            <div class="tab-item" onclick="switchPage(1)">
+                <div class="tab-item-icon">🥇</div>
+                <div class="tab-item-label">طلا</div>
+            </div>
+            <div class="tab-item" onclick="switchPage(2)">
+                <div class="tab-item-icon">💱</div>
+                <div class="tab-item-label">ارز</div>
+            </div>
+            <div class="tab-item" onclick="switchPage(3)">
+                <div class="tab-item-icon">₿</div>
+                <div class="tab-item-label">رمزارز</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTopBtn" onclick="scrollToTop()">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" stroke="white"
+            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+            style="user-select: none; pointer-events: none;">
+            <path d="M12 5v14M5 12l7-7 7 7" />
+        </svg>
+    </button>
+
+    <!-- Chart Modal -->
+    <div class="modal" id="chartModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="chartModalTitle">نمودار قیمت</h2>
+                    <p id="chartModalSymbol" style="color: #999; font-size: 14px; margin-top: 5px;"></p>
+                </div>
+                <button class="close-btn" onclick="closeChartModal()">✕</button>
+            </div>
+            <div class="chart-container">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ⚙️ Cloudflare Worker URL - API Proxy
+        const WORKER_URL = 'https://ons-gold-tg.panytb.workers.dev';
+        const API_URL = `${WORKER_URL}/api/prices`;
+
+        // State
+        let allData = {
+            gold: [],
+            currency: [],
+            cryptocurrency: []
         };
-    } catch (error) {
-        console.error('❌ خطا در محاسبه قیمت واقعی:', error.message);
-        console.error('Stack:', error.stack);
-        return null;
-    }
-}
+        let currentPage = 0;
+        let chartInstance = null;
 
-/**
- * Format price with Persian digits and separators
- */
-function formatPersianPrice(price) {
-    const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+        // Format Persian Digits
+        function toPersianDigits(str) {
+            const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+            const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
 
-    let priceStr = price.toString();
+            let result = str.toString();
+            for (let i = 0; i < englishDigits.length; i++) {
+                result = result.replace(new RegExp(englishDigits[i], 'g'), persianDigits[i]);
+            }
+            return result;
+        }
 
-    // Add thousand separators
-    priceStr = priceStr.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        // Format Price
+        function formatPrice(price) {
+            if (typeof price === 'string' && price.startsWith('0.')) {
+                return price;
+            }
 
-    // Convert to Persian digits
-    for (let i = 0; i < englishDigits.length; i++) {
-        priceStr = priceStr.replace(new RegExp(englishDigits[i], 'g'), persianDigits[i]);
-    }
+            price = parseFloat(price);
 
-    return priceStr;
-}
+            if (price < 1) {
+                return price.toFixed(6).replace(/\.?0+$/, '');
+            } else if (price < 100) {
+                return price.toFixed(2).replace(/\.?0+$/, '');
+            } else {
+                return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            }
+        }
 
-/**
- * Convert English digits to Persian
- */
-function toPersianDigits(str) {
+        // Format Time
+        function formatTime(date) {
+            return date.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Toggle Dark Mode
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeToggleButton();
+        }
+
+        function updateThemeToggleButton() {
+            const btn = document.querySelector('.theme-toggle');
+            const isDark = document.body.classList.contains('dark-mode');
+            btn.textContent = isDark ? '☀️' : '🌙';
+        }
+
+        // Initialize Theme
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+            updateThemeToggleButton();
+        }
+
+        // Update Time and Date
+        function updateTimeDate() {
+            const now = new Date();
+            const timeStr = formatTime(now);
+            const dateStr = now.toLocaleDateString('fa-IR');
+
+            document.getElementById('currentTime').textContent = timeStr;
+            document.getElementById('currentDate').textContent = dateStr;
+        }
+
+        // Switch Page
+        function switchPage(pageIndex) {
+            currentPage = pageIndex;
+            const container = document.getElementById('pagesContainer');
+            const offset = -pageIndex * 100;
+            container.style.transform = `translateX(${offset}%)`;
+
+            // Update active tab
+            document.querySelectorAll('.tab-item').forEach((tab, index) => {
+                tab.classList.toggle('active', index === pageIndex);
+            });
+        }
+
+        // Fetch Data
+        async function fetchData() {
+            try {
+                const response = await fetch(`${API_URL}?section=gold,currency,cryptocurrency`);
+                const data = await response.json();
+
+                if (data.successful) {
+                    if (data.gold) {
+                        allData.gold = [
+                            ...data.gold.ounce.map(item => ({ ...item, type: 'gold', category: 'ounce' })),
+                            ...data.gold.type.map(item => ({ ...item, type: 'gold', category: 'type' })),
+                            ...data.gold.coin.map(item => ({ ...item, type: 'gold', category: 'coin' })),
+                            ...data.gold.coin_parsian.map(item => ({ ...item, type: 'gold', category: 'coin_parsian' }))
+                        ];
+                    }
+
+                    if (data.currency && data.currency.free) {
+                        allData.currency = data.currency.free.map(item => ({ ...item, type: 'currency' }));
+                    }
+
+                    if (data.cryptocurrency) {
+                        allData.cryptocurrency = data.cryptocurrency.map(item => ({ ...item, type: 'crypto' }));
+                    }
+
+                    renderAllPages();
+                }
+            } catch (error) {
+                console.error('خطا:', error);
+            }
+        }
+
+        // Render All Pages
+        function renderAllPages() {
+            const allGrid = document.getElementById('priceGrid-all');
+            const goldGrid = document.getElementById('priceGrid-gold');
+            const currencyGrid = document.getElementById('priceGrid-currency');
+            const cryptoGrid = document.getElementById('priceGrid-crypto');
+
+            allGrid.innerHTML = '';
+            goldGrid.innerHTML = '';
+            currencyGrid.innerHTML = '';
+            cryptoGrid.innerHTML = '';
+
+            // All
+            [...allData.gold, ...allData.currency, ...allData.cryptocurrency].forEach(item => {
+                allGrid.appendChild(createPriceCard(item));
+            });
+
+            // Gold
+            allData.gold.forEach(item => {
+                goldGrid.appendChild(createPriceCard(item));
+            });
+
+            // Currency
+            allData.currency.forEach(item => {
+                currencyGrid.appendChild(createPriceCard(item));
+            });
+
+            // Crypto
+            allData.cryptocurrency.forEach(item => {
+                cryptoGrid.appendChild(createPriceCard(item));
+            });
+        }
+
+        // Create Price Card
+        function createPriceCard(item) {
+            const card = document.createElement('div');
+            card.className = 'price-card';
+
+            const change = parseFloat(item.change_percent) || 0;
+            const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
+            const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
+
+            let iconElement = '';
+            if (item.path_icon) {
+                const iconUrl = `https://brsapi.ir/Api/Market/GCC/Icon/256x256/${item.path_icon}`;
+                iconElement = `<img src="${iconUrl}" alt="${item.symbol}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain;" draggable="false" onerror="this.parentElement.innerHTML='<div style=&quot;width: 50px; height: 50px; border-radius: 10px; background: #667eea; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white;&quot;>${item.symbol}</div>'">`;
+            } else {
+                iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: #667eea; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white;">${item.symbol}</div>`;
+            }
+
+            let priceDisplay = '';
+            if (item.type === 'crypto') {
+                const dollarPrice = item.symbol === 'USDT' ? '1' : formatPrice(item.price);
+                const tomanPrice = formatPrice(item.price_toman);
+                priceDisplay = `
+                    <div class="card-price">
+                        ${dollarPrice}
+                        <span class="unit">دلار</span>
+                    </div>
+                    <div class="card-price" style="color: #764ba2;">
+                        ${tomanPrice}
+                        <span class="unit">تومان</span>
+                    </div>
+                `;
+            } else {
+                priceDisplay = `
+                    <div class="card-price">
+                        ${formatPrice(item.price)}
+                        <span class="unit">${item.unit}</span>
+                    </div>
+                `;
+            }
+
+            const changeValue = formatPrice(Math.abs(item.change_value || 0));
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="card-icon">${iconElement}</div>
+                    <div class="card-title">
+                        <h3>${item.name}</h3>
+                        <span class="symbol">${item.symbol}</span>
+                    </div>
+                </div>
+                ${priceDisplay}
+                <div class="card-change">
+                    <div class="change-item">
+                        <div class="change-label">تغییر مقدار</div>
+                        <div class="change-value ${changeClass}">
+                            ${changeIcon}
+                            ${changeValue}
+                        </div>
+                    </div>
+                    <div class="change-item">
+                        <div class="change-label">تغییر درصد</div>
+                        <div class="change-value ${changeClass}">
+                            ${changeIcon}
+                            <span>${Math.abs(change).toFixed(2)}%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    📅 ${item.date} ⏰ ${item.time}
+                </div>
+                <button class="chart-btn" onclick="openChartModal('${item.symbol}', '${item.name}')">
+                    📊 نمودار قیمت 24 ساعت
+                </button>
+            `;
+
+            return card;
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            initTheme();
+            updateTimeDate();
+            setInterval(updateTimeDate, 1000);
+            fetchData();
+            setInterval(fetchData, 60000);
+        });
+    </script>
+
+    // State
+    let allData = {
+    gold: [],
+    currency: [],
+    cryptocurrency: []
+    };
+    let filteredData = [];
+    let currentFilter = 'all';
+    let chartInstance = null;
+
+    // Format Persian Digits
+    function toPersianDigits(str) {
     const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
     const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
 
     let result = str.toString();
-    for (let i = 0; i < englishDigits.length; i++) {
-        result = result.replace(new RegExp(englishDigits[i], 'g'), persianDigits[i]);
-    }
-    return result;
-}
-
-/**
- * Format date and time to Persian format
- */
-function formatPersianDateTime(shamsiDate, time) {
-    // shamsiDate format: 1404/02/14, time format: 19:02
-    const dateParts = shamsiDate.split('/');
-    const year = toPersianDigits(dateParts[0]);
-    const month = toPersianDigits(dateParts[1]);
-    const day = toPersianDigits(dateParts[2]);
-    const persianTime = toPersianDigits(time);
-
-    return `${year}/${month}/${day}, ${persianTime}`;
-}
-
-/**
- * Format date to Iran timezone (Asia/Tehran)
- */
-function formatToIranTime(dateString) {
-    try {
-        const date = new Date(dateString);
-        const persianDate = date.toLocaleString('fa-IR', {
-            timeZone: 'Asia/Tehran',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-        return persianDate;
-    } catch (error) {
-        console.error('Error formatting Iran time:', error);
-        return dateString;
-    }
-}
-
-/**
- * Build message based on price change - For Telegram Channel (with English digits, except date/time)
- */
-function buildMessage(goldData) {
-    const price = goldData.price;
-    const changeValue = goldData.changeValue;
-    const changePercent = goldData.changePercent;
-
-    // Format price in English digits with comma separator
-    const formattedPrice = price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-
-    let emoji = '⚪️';
-    let changeText = '⚖️ بدون تغییر';
-
-    if (changeValue > 0) {
-        emoji = '🟢';
-        // Use English digits for change value and percent
-        const formattedChange = Math.abs(changeValue).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        const formattedPercent = changePercent.toFixed(2);
-        changeText = `📈 افزایش : ${formattedChange}+ ${goldData.unit} (%${formattedPercent}+)`;
-    } else if (changeValue < 0) {
-        emoji = '🔴';
-        // Use English digits for change value and percent
-        const formattedChange = Math.abs(changeValue).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-        const formattedPercent = Math.abs(changePercent).toFixed(2);
-        changeText = `📉 کاهش : ${formattedChange}- ${goldData.unit} (%${formattedPercent}-)`;
-    }
-
-    // Keep date and time in Persian digits
-    const formattedDateTime = formatPersianDateTime(goldData.date, goldData.time);
-
-    const message =
-        `${emoji} ${goldData.name} : <b>${formattedPrice} ${goldData.unit}</b>\n\n` +
-        `${changeText}\n\n` +
-        `⏰ زمان : ${formattedDateTime}\n\n` +
-        `● <a href="https://t.me/OunceGoldBot">𝐎𝐮𝐧𝐜𝐞𝐆𝐨𝐥𝐝𝐁𝐨𝐭</a>`;
-
-    return message;
-}
-
-/**
- * Build gold type message - For user requests (no change info)
- */
-function buildGoldTypeMessage(goldData, isOunce = false) {
-    const price = goldData.price;
-    const formattedPrice = price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    const formattedDateTime = formatPersianDateTime(goldData.date, goldData.time);
-
-    if (isOunce) {
-        // Special format for Ounce with extra spacing between lines
-        const message =
-            `<b>${goldData.name}</b>\n\n` +
-            `💰 <b>${formattedPrice} ${goldData.unit}</b>\n\n` +
-            `⏰ آخرین بروزرسانی: ${formattedDateTime}\n\n` +
-            `● <a href="https://t.me/OunceGoldBot">𝐎𝐮𝐧𝐜𝐞𝐆𝐨𝐥𝐝𝐁𝐨𝐭</a>`;
-        return message;
-    } else {
-        // Regular format for other types (without extra spacing)
-        const message =
-            `<b>${goldData.name}</b>\n` +
-            `💰 <b>${formattedPrice} ${goldData.unit}</b>\n` +
-            `⏰ آخرین بروزرسانی: ${formattedDateTime}`;
-        return message;
-    }
-}
-
-/**
- * Send message to Telegram with inline buttons
- */
-async function sendTelegramMessage(botToken, chatId, message, inlineKeyboard = null) {
-    try {
-        const telegramApiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
-
-        const payload = {
-            chat_id: chatId,
-            text: message,
-            parse_mode: 'HTML',
-            disable_web_page_preview: true
-        };
-
-        if (inlineKeyboard) {
-            payload.reply_markup = {
-                inline_keyboard: inlineKeyboard
-            };
-        }
-
-        console.log(`📤 Sending message to chat ID: ${chatId}`);
-        console.log(`📝 Message length: ${message.length}`);
-
-        const response = await fetch(telegramApiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-
-        console.log(`📡 Telegram API Response:`, JSON.stringify(result));
-
-        if (result.ok) {
-            console.log('✅ Message sent successfully');
-            return true;
-        } else {
-            console.error(`❌ Telegram API error: ${result.error_code} - ${result.description}`);
-            return false;
-        }
-    } catch (error) {
-        console.error('Error sending message:', error);
-        return false;
-    }
-}
-
-/**
- * Send message to Telegram channel
- */
-async function sendPriceUpdate(botToken, channelId, message) {
-    return await sendTelegramMessage(botToken, channelId, message);
-}
-
-/**
- * Handle /start command with organized keyboard
- */
-async function handleStartCommand(botToken, userId, channelUsername, adminIds) {
-    const welcomeMessage =
-        `<b>🤖 خوش آمدید به ربات اُنس طلا</b>\n\n` +
-        `<b>دسترسی سریع به قیمت‌های طلا و سکه:</b>`;
-
-    const keyboard = [
-        [
-            { text: '🌍 انس جهانی' }
-        ],
-        [
-            { text: '🏵 سکه پارسیان' },
-            { text: '🥇 طلا ها' },
-            { text: '🪙 سکه ها' }
-        ],
-        [
-            { text: '💎 محاسبه حباب طلا' }
-        ],
-        [
-            { text: '📢 عضویت در کانال' }
-        ]
-    ];
-
-    // Add admin panel button if user is admin
-    if (isAdmin(userId, adminIds)) {
-        keyboard.push([
-            { text: '👨‍💻 پنل مدیریت' }
-        ]);
-    }
-
-    const replyMarkup = {
-        keyboard: keyboard,
-        resize_keyboard: true,
-        one_time_keyboard: false,
-        selective: false
-    };
-
-    const payload = {
-        chat_id: userId,
-        text: welcomeMessage,
-        parse_mode: 'HTML',
-        reply_markup: replyMarkup
-    };
-
-    try {
-        const telegramApiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
-        const response = await fetch(telegramApiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-
-        if (result.ok) {
-            console.log('✅ Welcome message with keyboard sent');
-            return true;
-        } else {
-            console.error(`❌ Telegram API error: ${result.error_code} - ${result.description}`);
-            return false;
-        }
-    } catch (error) {
-        console.error('Error sending welcome message:', error);
-        return false;
-    }
-}
-
-/**
- * Handle admin panel request - show admin menu
- */
-async function showAdminPanel(botToken, userId) {
-    try {
-        const adminMessage =
-            `<b>👨‍💻 پنل مدیریت</b>\n\n` +
-            `<b>انتخاب یکی از گزینه‌های زیر:</b>`;
-
-        const keyboard = [
-            [
-                { text: '📊 آمار کاربران' }
-            ],
-            [
-                { text: '🔄 برگشت به منو اصلی' }
-            ]
+    for (let i = 0; i < englishDigits.length; i++) { result=result.replace(new RegExp(englishDigits[i], 'g' ),
+        persianDigits[i]); } return result; } // Format Price with Separators (برای ارزهای اعشاری و معمولی) function
+        formatPrice(price) { // اگر قیمت string و با 0. شروع می‌شود، دقیقاً همان را نمایش بده if (typeof
+        price==='string' && price.startsWith('0.')) { return price; } price=parseFloat(price); // اگر قیمت خیلی پایین
+        باشد (مثل رمزارزهایی که < 1) if (price < 1) { // نمایش 6 رقم اعشار برای ارزهای بسیار پایین return
+        price.toFixed(6).replace(/\.?0+$/, '' ); } else if (price < 100) { // نمایش 2 رقم اعشار برای ارزهای کمتر از 100
+        return price.toFixed(2).replace(/\.?0+$/, '' ); } else { // نمایش بدون اعشار + separator برای ارزهای بزرگ return
+        Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',' ); } } // Format Time function
+        formatTime(date) { return date.toLocaleTimeString('fa-IR', { hour: '2-digit' , minute: '2-digit' }); } // Fetch
+        Data from API (via Cloudflare Worker Proxy) async function fetchData() { try {
+        document.getElementById('loadingState').style.display='none' ; document.getElementById('priceGrid').innerHTML=''
+        ; document.getElementById('emptyState').style.display='none' ; // نمایش skeleton loading const
+        grid=document.getElementById('priceGrid'); const skeletonCount=4; for (let i=0; i < skeletonCount; i++) {
+        grid.appendChild(createSkeletonCard()); } // درخواست از Worker proxy const response=await
+        fetch(`${API_URL}?section=gold,currency,cryptocurrency`); const data=await response.json(); if (data.successful)
+        { // Process Gold Data if (data.gold) { allData.gold=[ ...data.gold.ounce.map(item=> ({ ...item, type: 'gold',
+        category: 'ounce' })),
+        ...data.gold.type.map(item => ({ ...item, type: 'gold', category: 'type' })),
+        ...data.gold.coin.map(item => ({ ...item, type: 'gold', category: 'coin' })),
+        ...data.gold.coin_parsian.map(item => ({ ...item, type: 'gold', category: 'coin_parsian' }))
         ];
+        }
 
-        const replyMarkup = {
-            keyboard: keyboard,
-            resize_keyboard: true,
-            one_time_keyboard: false,
-            selective: false
-        };
+        // Process Currency Data
+        if (data.currency && data.currency.free) {
+        allData.currency = data.currency.free.map(item => ({ ...item, type: 'currency' }));
+        }
 
-        const payload = {
-            chat_id: userId,
-            text: adminMessage,
-            parse_mode: 'HTML',
-            reply_markup: replyMarkup
-        };
+        // Process Crypto Data
+        if (data.cryptocurrency) {
+        allData.cryptocurrency = data.cryptocurrency.map(item => ({ ...item, type: 'crypto' }));
+        }
 
-        const telegramApiUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
-        const response = await fetch(telegramApiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload)
+        // Update Filter and Render
+        filterAndRender();
+
+        // Update Time
+        document.getElementById('updateTime').textContent = formatTime(new Date());
+        } else {
+        showError('خطا در دریافت اطلاعات از API');
+        }
+        } catch (error) {
+        console.error('خطا:', error);
+        showError('خطا در اتصال به سرور');
+        } finally {
+        document.getElementById('loadingState').style.display = 'none';
+        }
+        }
+
+        // Filter and Render
+        function filterAndRender() {
+        let dataToRender = [];
+
+        if (currentFilter === 'all') {
+        dataToRender = [...allData.gold, ...allData.currency, ...allData.cryptocurrency];
+        } else if (currentFilter === 'gold') {
+        dataToRender = allData.gold;
+        } else if (currentFilter === 'currency') {
+        dataToRender = allData.currency;
+        } else if (currentFilter === 'crypto') {
+        dataToRender = allData.cryptocurrency;
+        }
+
+        // Apply Search Filter
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        if (searchTerm) {
+        dataToRender = dataToRender.filter(item => {
+        const name = item.name ? item.name.toLowerCase() : '';
+        const nameEn = item.name_en ? item.name_en.toLowerCase() : '';
+        const symbol = item.symbol ? item.symbol.toLowerCase() : '';
+        return name.includes(searchTerm) || nameEn.includes(searchTerm) || symbol.includes(searchTerm);
         });
+        }
 
-        const result = await response.json();
+        filteredData = dataToRender;
 
-        if (result.ok) {
-            console.log('✅ Admin panel menu sent');
-            return true;
+        if (dataToRender.length === 0) {
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('priceGrid').innerHTML = '';
         } else {
-            console.error(`❌ Telegram API error: ${result.error_code} - ${result.description}`);
-            return false;
+        document.getElementById('emptyState').style.display = 'none';
+        renderPrices(dataToRender);
         }
-    } catch (error) {
-        console.error('Error showing admin panel:', error);
-        return false;
-    }
-}
-
-/**
- * Handle admin panel request - show statistics
- */
-async function handleAdminStats(botToken, userId, db) {
-    try {
-        const stats = await getUserStats(db);
-
-        if (!stats) {
-            await sendTelegramMessage(botToken, userId, '❌ خطا در دریافت آمار');
-            return;
         }
 
-        let adminMessage = `<b>📊 آمار کاربران</b>\n\n`;
-        adminMessage += `<b>📈 آمارهای کلی:</b>\n`;
-        adminMessage += `• کل کاربران: <b>${stats.totalUsers}</b>\n`;
-        adminMessage += `• کاربران فعال (۷ روز): <b>${stats.activeUsers}</b>\n\n`;
-
-        if (stats.topUsers && stats.topUsers.length > 0) {
-            adminMessage += `<b>🏆 فعال‌ترین کاربران:</b>\n`;
-            stats.topUsers.forEach((user, index) => {
-                const name = user.first_name || user.username || 'نام‌ناشناس';
-                adminMessage += `${index + 1}. <b>${name}</b> - ${user.interaction_count} درخواست\n`;
-            });
-            adminMessage += `\n`;
+        // Create Skeleton Card
+        function createSkeletonCard() {
+        const card = document.createElement('div');
+        card.className = 'price-card skeleton-card';
+        card.innerHTML = `
+        <div class="skeleton-header">
+            <div class="skeleton-element skeleton-icon"></div>
+            <div class="skeleton-title">
+                <div class="skeleton-element line" style="height: 18px;"></div>
+                <div class="skeleton-element line" style="height: 14px; width: 50%;"></div>
+            </div>
+        </div>
+        <div class="skeleton-element skeleton-price"></div>
+        <div class="skeleton-change">
+            <div class="skeleton-change-item">
+                <div class="skeleton-element line" style="height: 12px; margin-bottom: 4px;"></div>
+                <div class="skeleton-element line" style="height: 14px;"></div>
+            </div>
+            <div class="skeleton-change-item">
+                <div class="skeleton-element line" style="height: 12px; margin-bottom: 4px;"></div>
+                <div class="skeleton-element line" style="height: 14px;"></div>
+            </div>
+        </div>
+        <div class="skeleton-element skeleton-footer"></div>
+        <div class="skeleton-element skeleton-btn"></div>
+        `;
+        return card;
         }
 
-        if (stats.lastUser) {
-            const lastUserName = stats.lastUser.first_name || stats.lastUser.username || 'نام‌ناشناس';
-            const lastTime = formatToIranTime(stats.lastUser.last_interaction);
-            adminMessage += `<b>⏰ آخرین کاربر:</b>\n`;
-            adminMessage += `نام: <b>${lastUserName}</b>\n`;
-            adminMessage += `زمان: <b>${lastTime}</b>\n`;
-        }
-
-        adminMessage += `\n<i>به‌روزرسانی شده: ${formatToIranTime(new Date().toISOString())}</i>`;
-
-        await sendTelegramMessage(botToken, userId, adminMessage);
-    } catch (error) {
-        console.error('Error handling admin stats:', error.message);
-        await sendTelegramMessage(botToken, userId, `❌ خطا در دریافت آمار: ${error.message}`);
-    }
-}
-
-/**
- * Process gold type button request
- */
-async function processGoldTypeRequest(botToken, userId, buttonText, apiKey) {
-    try {
-        const allGoldData = await fetchAllGoldTypes(apiKey);
-
-        if (!allGoldData) {
-            await sendTelegramMessage(botToken, userId, '❌ خطا در دریافت داده‌های طلا');
-            return;
-        }
-
-        let message = '';
-
-        // Handle Ounce request
-        if (buttonText.includes('انس')) {
-            if (allGoldData.ounce && Array.isArray(allGoldData.ounce) && allGoldData.ounce.length > 0) {
-                const goldData = allGoldData.ounce[0];
-                const priceData = {
-                    price: goldData.price,
-                    changeValue: goldData.change_value || 0,
-                    changePercent: goldData.change_percent || 0,
-                    name: goldData.name,
-                    unit: goldData.unit,
-                    date: goldData.date,
-                    time: goldData.time
-                };
-                message = buildGoldTypeMessage(priceData, true);
-            }
-        }
-        // Handle Iran Gold types
-        else if (buttonText.includes('طلا')) {
-            if (allGoldData.type && Array.isArray(allGoldData.type) && allGoldData.type.length > 0) {
-                message = '<b>🥇 طلا ها:</b>\n\n';
-                for (const gold of allGoldData.type) {
-                    const priceData = {
-                        price: gold.price,
-                        changeValue: gold.change_value || 0,
-                        changePercent: gold.change_percent || 0,
-                        name: gold.name,
-                        unit: gold.unit,
-                        date: gold.date,
-                        time: gold.time
-                    };
-                    const goldMsg = buildGoldTypeMessage(priceData, false);
-                    message += goldMsg + '\n\n';
-                }
-                message += `● <a href="https://t.me/OunceGoldBot">𝐎𝐮𝐧𝐜𝐞𝐆𝐨𝐥𝐝𝐁𝐨𝐭</a>`;
-            }
-        }
-        // Handle Coins
-        else if (buttonText.includes('سکه') && !buttonText.includes('پارسیان')) {
-            if (allGoldData.coin && Array.isArray(allGoldData.coin) && allGoldData.coin.length > 0) {
-                message = '<b>🪙 سکه ها:</b>\n\n';
-                for (const coin of allGoldData.coin) {
-                    const priceData = {
-                        price: coin.price,
-                        changeValue: coin.change_value || 0,
-                        changePercent: coin.change_percent || 0,
-                        name: coin.name,
-                        unit: coin.unit,
-                        date: coin.date,
-                        time: coin.time
-                    };
-                    const coinMsg = buildGoldTypeMessage(priceData, false);
-                    message += coinMsg + '\n\n';
-                }
-                message += `● <a href="https://t.me/OunceGoldBot">𝐎𝐮𝐧𝐜𝐞𝐆𝐨𝐥𝐝𝐁𝐨𝐭</a>`;
-            }
-        }
-        // Handle Parsian Coins
-        else if (buttonText.includes('پارسیان')) {
-            if (allGoldData.coin_parsian && Array.isArray(allGoldData.coin_parsian) && allGoldData.coin_parsian.length > 0) {
-                message = '<b>💎 سکه پارسیان:</b>\n\n';
-                for (const coin of allGoldData.coin_parsian) {
-                    const priceData = {
-                        price: coin.price,
-                        changeValue: coin.change_value || 0,
-                        changePercent: coin.change_percent || 0,
-                        name: coin.name,
-                        unit: coin.unit,
-                        date: coin.date,
-                        time: coin.time
-                    };
-                    const coinMsg = buildGoldTypeMessage(priceData, false);
-                    message += coinMsg + '\n\n';
-                }
-                message += `● <a href="https://t.me/OunceGoldBot">𝐎𝐮𝐧𝐜𝐞𝐆𝐨𝐥𝐝𝐁𝐨𝐭</a>`;
-            }
-        }
-
-        if (message) {
-            await sendTelegramMessage(botToken, userId, message);
-        } else {
-            await sendTelegramMessage(botToken, userId, '❌ اطلاعات مورد نظر در دسترس نیست');
-        }
-
-    } catch (error) {
-        console.error('Error processing gold type request:', error);
-        await sendTelegramMessage(botToken, userId, '❌ خطا در پردازش درخواست');
-    }
-}
-
-/**
- * Main handler for Cloudflare Workers scheduled trigger
- */
-export async function handleScheduled(event, env) {
-    console.log('🤖 OunceGoldx CRON triggered');
-
-    const botToken = env.TG_BOT_TOKEN;
-    const channelId = env.TG_CHANNEL_ID;
-    const apiKey = env.API_KEY;
-    const kvNamespace = env.PRICE_KV;
-    const db = env.DB;
-
-    // Initialize database
-    if (db) {
-        await initializeDatabase(db);
-    }
-
-    // Validate environment variables
-    if (!botToken) {
-        console.error('❌ Missing TG_BOT_TOKEN');
-        return;
-    }
-    if (!channelId) {
-        console.error('❌ Missing TG_CHANNEL_ID');
-        return;
-    }
-    if (!apiKey) {
-        console.error('❌ Missing API_KEY');
-        return;
-    }
-    if (!kvNamespace) {
-        console.error('❌ Missing KV Namespace binding');
-        return;
-    }
-
-    // 🔍 بررسی cooldown
-    const inCooldown = await isInErrorCooldown(kvNamespace, 'CRON_CHANNEL');
-    if (inCooldown) {
-        console.log('⏸️ CRON: پیام فرستاده نمی‌شود (در حالت خاموشی)');
-        return;
-    }
-
-    console.log(`📋 Using Channel ID: ${channelId}`);
-    console.log(`🔑 API Key exists: ${apiKey ? 'Yes' : 'No'}`);
-    console.log(`💾 KV Namespace bound: Yes`);
-
-    try {
-        // Fetch gold price with KV comparison
-        const goldData = await fetchGoldPrice(apiKey, kvNamespace);
-
-        if (!goldData) {
-            console.error('❌ Failed to fetch gold price');
-            return;
-        }
-
-        console.log(`✅ Gold price fetched: ${goldData.price} ${goldData.unit}`);
-
-        // Build message
-        const message = buildMessage(goldData);
-
-        // Send to Telegram
-        const sent = await sendPriceUpdate(botToken, channelId, message);
-
-        if (sent) {
-            console.log(`✅ Message sent to channel at ${new Date().toISOString()}`);
-            // پاک کردن وضعیت خطا بعد از موفقیت
-            await clearErrorStatus(kvNamespace, 'CRON_CHANNEL');
-        } else {
-            console.error('❌ Failed to send message to channel');
-        }
-    } catch (error) {
-        console.error('❌ Error in handleScheduled:', error);
-    }
-}
-
-/**
- * Initialize database tables
- */
-async function initializeDatabase(db) {
-    try {
-        // Create users table
-        await db.prepare(`
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY,
-                username TEXT,
-                first_name TEXT,
-                last_name TEXT,
-                joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                last_interaction DATETIME DEFAULT CURRENT_TIMESTAMP,
-                interaction_count INTEGER DEFAULT 1
-            )
-        `).run();
-
-        // Create indexes
-        await db.prepare(`
-            CREATE INDEX IF NOT EXISTS idx_users_last_interaction ON users(last_interaction)
-        `).run();
-
-        await db.prepare(`
-            CREATE INDEX IF NOT EXISTS idx_users_interaction_count ON users(interaction_count)
-        `).run();
-
-        console.log('✅ Database initialized successfully');
-    } catch (error) {
-        console.error('❌ Database initialization error:', error.message);
-        console.error('Full error:', error);
-    }
-}
-
-/**
- * Track/record user interaction in database
- */
-async function trackUser(db, userId, firstName, username) {
-    try {
-        if (!db) {
-            console.warn('⚠️ Database not available for tracking');
-            return;
-        }
-
-        // Check if user exists
-        const existingUser = await db.prepare(
-            'SELECT user_id FROM users WHERE user_id = ?'
-        ).bind(userId).first();
-
-        if (existingUser) {
-            // Update existing user
-            await db.prepare(
-                'UPDATE users SET last_interaction = CURRENT_TIMESTAMP, interaction_count = interaction_count + 1 WHERE user_id = ?'
-            ).bind(userId).run();
-            console.log(`📊 User ${userId} interaction updated`);
-        } else {
-            // Insert new user (with null handling)
-            await db.prepare(
-                'INSERT INTO users (user_id, username, first_name, last_interaction, interaction_count) VALUES (?, ?, ?, CURRENT_TIMESTAMP, 1)'
-            ).bind(userId, username || null, firstName || null).run();
-            console.log(`✨ New user ${userId} recorded`);
-        }
-    } catch (error) {
-        console.error('❌ Error tracking user:', error.message);
-        console.error('User ID:', userId, 'Error details:', error);
-    }
-}
-
-/**
- * Get user statistics for admin panel
- */
-async function getUserStats(db) {
-    try {
-        if (!db) {
-            console.warn('⚠️ Database not available');
-            return {
-                totalUsers: 0,
-                activeUsers: 0,
-                topUsers: [],
-                lastUser: null
-            };
-        }
-
-        // Total users
-        const totalUsers = await db.prepare(
-            'SELECT COUNT(*) as count FROM users'
-        ).first();
-
-        // Active users in last 7 days
-        const activeUsers = await db.prepare(
-            `SELECT COUNT(*) as count FROM users 
-            WHERE last_interaction >= datetime('now', '-7 days')`
-        ).first();
-
-        // Top 5 most active users
-        const topUsersResult = await db.prepare(
-            `SELECT username, first_name, interaction_count FROM users 
-            WHERE username IS NOT NULL
-            ORDER BY interaction_count DESC LIMIT 5`
-        ).all();
-
-        // Last interaction
-        const lastUser = await db.prepare(
-            `SELECT username, first_name, last_interaction FROM users 
-            WHERE username IS NOT NULL
-            ORDER BY last_interaction DESC LIMIT 1`
-        ).first();
-
-        const topUsers = topUsersResult?.results || [];
-
-        console.log(`✅ Stats retrieved: ${totalUsers?.count || 0} total users, ${activeUsers?.count || 0} active`);
-
-        return {
-            totalUsers: totalUsers?.count || 0,
-            activeUsers: activeUsers?.count || 0,
-            topUsers: topUsers,
-            lastUser: lastUser
-        };
-    } catch (error) {
-        console.error('❌ Error getting stats:', error.message);
-        console.error('Stack:', error.stack);
-        return {
-            totalUsers: 0,
-            activeUsers: 0,
-            topUsers: [],
-            lastUser: null
-        };
-    }
-}
-
-/**
- * Handle incoming Telegram webhook updates
- */
-export async function handleWebhook(request, env) {
-    if (request.method !== 'POST') {
-        return new Response('OK', { status: 200 });
-    }
-
-    try {
-        const update = await request.json();
-        console.log('Webhook update received:', JSON.stringify(update));
-
-        const botToken = env.TG_BOT_TOKEN;
-        const channelUsername = env.CHANNEL_USERNAME;
-        const apiKey = env.API_KEY;
-        const kvNamespace = env.PRICE_KV;
-        const db = env.DB;
-        const adminIdsString = env.ADMIN_IDS || '';
-        const adminIds = parseAdminIds(adminIdsString);
-
-        // Initialize database
-        if (db) {
-            await initializeDatabase(db);
-        }
-
-        // Handle /start command
-        if (update.message && update.message.text === '/start') {
-            const userId = update.message.from.id;
-            const firstName = update.message.from.first_name;
-            const username = update.message.from.username;
-
-            console.log(`/start command from user ${userId}`);
-
-            // Track user
-            if (db) {
-                await trackUser(db, userId, firstName, username);
-            }
-
-            try {
-                await handleStartCommand(botToken, userId, channelUsername, adminIds);
-                await clearErrorStatus(kvNamespace, 'WEBHOOK_START');
-            } catch (error) {
-                console.error('خطا در /start:', error);
-                await sendTelegramMessage(botToken, userId, '❌ خطا در ارسال منوی خوش‌آمد');
-            }
-        }
-
-        // Handle button text (keyboard responses)
-        if (update.message && update.message.text) {
-            const text = update.message.text;
-            const userId = update.message.from.id;
-            const firstName = update.message.from.first_name;
-            const username = update.message.from.username;
-
-            // Track user activity
-            if (db) {
-                await trackUser(db, userId, firstName, username);
-            }
-
-            try {
-                // Get user state
-                const userState = await getUserState(kvNamespace, userId);
-                console.log(`👤 User ${userId} state: ${userState}`);
-
-                // ============= ADMIN PANEL STATE HANDLING =============
-                if (userState === 'admin_panel') {
-                    // Handle admin panel options
-                    if (text.includes('آمار')) {
-                        console.log(`📊 Admin requested stats`);
-                        await handleAdminStats(botToken, userId, db);
-                        return new Response('OK', { status: 200 });
-                    }
-
-                    // Handle return to main menu
-                    if (text.includes('برگشت')) {
-                        console.log(`🔄 Returning to main menu`);
-                        await setUserState(kvNamespace, userId, 'main_menu');
-                        await handleStartCommand(botToken, userId, channelUsername, adminIds);
-                        return new Response('OK', { status: 200 });
-                    }
-
-                    // If admin is in panel but clicked something else, stay in panel
-                    await showAdminPanel(botToken, userId);
-                    return new Response('OK', { status: 200 });
-                }
-
-                // ============= MAIN MENU STATE HANDLING =============
-                // Handle admin panel entry
-                if (text.includes('پنل') || text.includes('مدیریت')) {
-                    if (!isAdmin(userId, adminIds)) {
-                        console.log(`❌ Unauthorized admin panel access: ${userId}`);
-                        await sendTelegramMessage(botToken, userId, '❌ شما دسترسی ندارید');
-                        return new Response('OK', { status: 200 });
-                    }
-                    console.log(`👨‍💻 Admin panel accessed by ${userId}`);
-                    await setUserState(kvNamespace, userId, 'admin_panel');
-                    await showAdminPanel(botToken, userId);
-                    return new Response('OK', { status: 200 });
-                }
-
-                // Handle gold bubble calculation
-                if (text.includes('محاسبه') || text.includes('حباب')) {
-                    const inCooldown = await isInErrorCooldown(kvNamespace, `CALC_${userId}`);
-                    if (inCooldown) {
-                        console.log(`⏸️ محاسبه: کاربر ${userId} در حالت خاموشی`);
-                        await sendTelegramMessage(botToken, userId, '⏸️ لطفا چند لحظه دیگر دوباره تلاش کنید');
-                        return new Response('OK', { status: 200 });
-                    }
-
-                    console.log(`Gold bubble calculation from user ${userId}`);
-                    const realPriceData = await calculateGoldRealPrice(apiKey);
-
-                    if (realPriceData) {
-                        console.log(`✅ Real price calculated: ${realPriceData.realPrice}`);
-                        const formattedRealPrice = Math.round(realPriceData.realPrice).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                        const formattedOunce = Math.round(realPriceData.ouncePrice).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                        const formattedUsd = Math.round(realPriceData.usdPrice).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                        const formattedDateTime = formatPersianDateTime(realPriceData.date, realPriceData.time);
-
-                        const bubbleMessage =
-                            `<b>💎 محاسبه حباب طلا</b>\n\n` +
-                            `<b>انس جهانی:</b> ${formattedOunce} دلار\n` +
-                            `<b>نرخ دلار:</b> ${formattedUsd} ریال\n\n` +
-                            `<b>قیمت واقعی طلا:</b>\n` +
-                            `<b>${formattedRealPrice} ریال</b>\n\n` +
-                            `⏰ ${formattedDateTime}\n\n` +
-                            `● <a href="https://t.me/OunceGoldBot">𝐎𝐮𝐧𝐜𝐞𝐆𝐨𝐥𝐝𝐁𝐨𝐭</a>`;
-
-                        await sendTelegramMessage(botToken, userId, bubbleMessage);
-                        await clearErrorStatus(kvNamespace, `CALC_${userId}`);
-                    } else {
-                        console.error('❌ Real price calculation failed');
-                        await sendTelegramMessage(botToken, userId, '❌ خطا در محاسبه قیمت واقعی طلا');
-                    }
-                    return new Response('OK', { status: 200 });
-                }
-
-                // Check if message is a gold price request button
-                if (text.includes('انس') || text.includes('طلا') || text.includes('سکه') || text.includes('پارسیان')) {
-                    const inCooldown = await isInErrorCooldown(kvNamespace, `PRICE_${userId}`);
-                    if (inCooldown) {
-                        console.log(`⏸️ درخواست قیمت: کاربر ${userId} در حالت خاموشی`);
-                        await sendTelegramMessage(botToken, userId, '⏸️ لطفا چند لحظه دیگر دوباره تلاش کنید');
-                        return new Response('OK', { status: 200 });
-                    }
-
-                    console.log(`Gold type request from user ${userId}: ${text}`);
-                    try {
-                        await processGoldTypeRequest(botToken, userId, text, apiKey);
-                        await clearErrorStatus(kvNamespace, `PRICE_${userId}`);
-                    } catch (error) {
-                        console.error('خطا در درخواست قیمت:', error);
-                        await sendTelegramMessage(botToken, userId, '❌ خطا در دریافت قیمت‌ها');
-                    }
-                }
-
-                // Handle channel join button
-                if (text.includes('📢') || text.includes('عضویت')) {
-                    const joinMessage = `<b>📢 برای عضویت در کانال</b>\n\nبر روی دکمه زیر کلیک کنید:`;
-                    const inlineKeyboard = [
-                        [
-                            {
-                                text: '🔗 عضویت در کانال',
-                                url: `https://t.me/${channelUsername || 'OunceGoldx'}`
-                            }
-                        ]
-                    ];
-                    await sendTelegramMessage(botToken, userId, joinMessage, inlineKeyboard);
-                }
-            } catch (error) {
-                console.error('خطای کلی در webhook:', error);
-            }
-        }
-
-        return new Response('OK', { status: 200 });
-    } catch (error) {
-        console.error('Error handling webhook:', error);
-        return new Response('Error', { status: 500 });
-    }
-}
-
-/**
- * API Proxy endpoint for Mini Web App (GitHub Pages)
- */
-async function handleApiProxy(request, env) {
-    try {
-        const url = new URL(request.url);
-        const section = url.searchParams.get('section');
-        const history = url.searchParams.get('history');
-        const symbol = url.searchParams.get('symbol');
-        const apiKey = env.API_KEY;
-
-        let proxyUrl = '';
-
-        // اگر درخواست history است
-        if (history && symbol) {
-            proxyUrl = `https://BrsApi.ir/Api/Market/Gold_Currency_Pro.php?key=${apiKey}&history=${history}&symbol=${symbol}`;
-            console.log(`📡 Proxy History Request: history=${history}, symbol=${symbol}`);
-        } else {
-            // درخواست معمولی
-            const sectionValue = section || 'gold,currency,cryptocurrency';
-            proxyUrl = `https://BrsApi.ir/Api/Market/Gold_Currency_Pro.php?key=${apiKey}&section=${sectionValue}`;
-            console.log(`📡 Proxy Section Request: ${sectionValue}`);
-        }
-
-        // درخواست از API اصلی
-        const response = await fetch(proxyUrl);
-        const data = await response.json();
-
-        console.log(`✅ Proxy Response Status: ${data.successful ? 'Success' : 'Failed'}`);
-
-        // ارسال پاسخ با CORS headers
-        return new Response(JSON.stringify(data), {
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type',
-                'Cache-Control': 'max-age=60' // کش 1 دقیقه
-            }
+        // Render Price Cards
+        function renderPrices(data) {
+        const grid = document.getElementById('priceGrid');
+        grid.innerHTML = '';
+
+        data.forEach(item => {
+        const card = createPriceCard(item);
+        grid.appendChild(card);
         });
-    } catch (error) {
-        console.error('❌ Proxy Error:', error.message);
-        return new Response(JSON.stringify({
-            successful: false,
-            message_error: 'Proxy Error: ' + error.message
-        }), {
-            status: 500,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
-        });
-    }
-}
-
-/**
- * Main export for Cloudflare Workers
- */
-export default {
-    async fetch(request, env) {
-        const url = new URL(request.url);
-
-        // API Proxy endpoint: GET /api/prices
-        if (url.pathname === '/api/prices') {
-            return await handleApiProxy(request, env);
         }
 
-        // Webhook endpoint: POST /webhook
-        if (url.pathname === '/webhook' && request.method === 'POST') {
-            return await handleWebhook(request, env);
-        }
+        // Create Price Card Element
+        function createPriceCard(item) {
+        const card = document.createElement('div');
+        card.className = 'price-card';
 
-        // Health check endpoint
-        if (url.pathname === '/health') {
-            return new Response(JSON.stringify({ status: 'ok' }), {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
+        const change = parseFloat(item.change_percent) || 0;
+        const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral' ; const changeIcon=change> 0 ? '📈' :
+            change < 0 ? '📉' : '⚖️' ; // ساخت آدرس آیکن از API (از path_icon در پاسخ API) let iconElement='' ; if
+                (item.path_icon) { // استفاده از آدرس پایه ثابت + path_icon const
+                iconUrl=`https://brsapi.ir/Api/Market/GCC/Icon/256x256/${item.path_icon}`; iconElement=`<img
+                src="${iconUrl}" alt="${item.symbol}"
+                style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none;"
+                draggable="false"
+                onerror="this.parentElement.innerHTML='<div style=&quot;width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;&quot;>${item.symbol}</div>'">
+                `;
+                } else if (item.symbol) {
+                // Fallback: نمایش symbol به صورت متنی اگر icon موجود نباشد
+                iconElement = `<div
+                    style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">
+                    ${item.symbol}</div>`;
+                } else {
+                iconElement = `<div
+                    style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">
+                    💰</div>`;
+                }
 
-        return new Response('Not Found', { status: 404 });
-    },
+                // برای ارزهای دیجیتال (crypto) دو قیمت نمایش بده (دلاری و تومانی)
+                let price = item.price;
+                let unit = item.unit;
+                let priceDisplay = '';
 
-    async scheduled(event, env) {
-        await handleScheduled(event, env);
-    }
-};
+                if (item.type === 'crypto') {
+                // قیمت دلاری
+                let dollarPrice = item.price;
+                if (item.symbol === 'USDT') {
+                dollarPrice = '1';
+                }
+                const formattedDollarPrice = formatPrice(dollarPrice);
+
+                // قیمت تومانی
+                const formattedTomanPrice = formatPrice(item.price_toman);
+
+                priceDisplay = `
+                <div class="card-price">
+                    ${formattedDollarPrice}
+                    <span class="unit">دلار</span>
+                </div>
+                <div class="card-price" style="color: #764ba2; margin-bottom: 5px;">
+                    ${formattedTomanPrice}
+                    <span class="unit">تومان</span>
+                </div>
+                `;
+                } else {
+                price = formatPrice(price);
+                priceDisplay = `
+                <div class="card-price">
+                    ${price}
+                    <span class="unit">${unit}</span>
+                </div>
+                `;
+                }
+
+                const changeValue = formatPrice(Math.abs(item.change_value || 0));
+
+                card.innerHTML = `
+                <div class="card-header">
+                    <div class="card-icon">
+                        ${iconElement}
+                    </div>
+                    <div class="card-title">
+                        <h3>${item.name}</h3>
+                        <span class="symbol">${item.symbol}</span>
+                    </div>
+                </div>
+
+                ${priceDisplay}
+
+                <div class="card-change">
+                    <div class="change-item">
+                        <div class="change-label">تغییر مقدار</div>
+                        <div class="change-value ${changeClass}">
+                            ${changeIcon}
+                            ${changeValue}
+                        </div>
+                    </div>
+                    <div class="change-item">
+                        <div class="change-label">تغییر درصد</div>
+                        <div class="change-value ${changeClass}">
+                            ${changeIcon}
+                            <span>${Math.abs(change).toFixed(2)}%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer">
+                    📅 ${item.date} ⏰ ${item.time}
+                </div>
+
+                <button class="chart-btn" onclick="openChartModal('${item.symbol}', '${item.name}')">
+                    📊 نمودار قیمت 24 ساعت
+                </button>
+                `;
+
+                return card;
+                }
+
+                // Show Error
+                function showError(message) {
+                const grid = document.getElementById('priceGrid');
+                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: white; padding: 40px;">❌
+                    ${message}</div>`;
+                }
+
+                // Open Chart Modal
+                async function openChartModal(symbol, name) {
+                document.getElementById('chartModalTitle').textContent = `نمودار قیمت - ${name}`;
+                document.getElementById('chartModalSymbol').textContent = symbol;
+                document.getElementById('chartModal').classList.add('active');
+
+                // اضافه کردن overflow hidden به body
+                document.body.classList.add('modal-open');
+
+                // نمایش skeleton loading برای نمودار
+                const chartContainer = document.getElementById('priceChart').parentElement;
+                chartContainer.innerHTML = '<div class="chart-skeleton"></div>';
+
+                await fetchHistoryData(symbol);
+                }
+
+                // Close Chart Modal
+                function closeChartModal() {
+                document.getElementById('chartModal').classList.remove('active');
+                // حذف overflow hidden از body
+                document.body.classList.remove('modal-open');
+                }
+
+                // Fetch History Data (24-hour history)
+                async function fetchHistoryData(symbol) {
+                try {
+                console.log(`📥 درخواست تاریخچه 24 ساعت برای: ${symbol}`);
+                const chartContainer = document.querySelector('.chart-container');
+
+                // درخواست از Worker proxy
+                const response = await fetch(`${API_URL}?history=1&symbol=${symbol}`);
+                const data = await response.json();
+
+                console.log(`📊 پاسخ API:`, data);
+
+                // API تاریخچه بدون successful بازمی‌گرداند - فقط بررسی history_24h
+                if (data && data.history_24h && Array.isArray(data.history_24h) && data.history_24h.length > 0) {
+                console.log(`✅ داده‌های تاریخچه دریافت شد: ${data.history_24h.length} رکورد`);
+                renderChart(data.history_24h, symbol, data.name);
+                } else if (data.error || data.message_error) {
+                console.error('❌ خطای API:', data.error || data.message_error);
+                chartContainer.innerHTML = `<p style="text-align:center; color:#666;">⚠️ ${data.error ||
+                    data.message_error}</p>`;
+                } else {
+                console.error('❌ داده تاریخچه دریافت نشد یا خالی است:', data);
+                chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا: داده تاریخچه در دسترس نیست
+                </p>';
+                }
+                } catch (error) {
+                console.error('❌ خطا در بارگذاری تاریخچه:', error);
+                const chartContainer = document.querySelector('.chart-container');
+                chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در اتصال به سرور: ' +
+                    error.message + '</p>';
+                }
+                }
+
+                // Render Chart (24-hour history)
+                function renderChart(historyData, symbol, name) {
+                const chartContainer = document.querySelector('.chart-container');
+
+                // حذف skeleton loading و بازسازی canvas
+                chartContainer.innerHTML = '<canvas id="priceChart"></canvas>';
+
+                const ctx = document.getElementById('priceChart').getContext('2d');
+
+                // ترتیب معکوس: از قدیمی‌تر به جدید‌تر
+                const sortedData = [...historyData].reverse();
+
+                // آماده‌سازی داده‌ها
+                const labels = sortedData.map(item => {
+                // نمایش تاریخ و ساعت فشرده
+                const time = item.time ? item.time.substring(0, 5) : '--';
+                return time;
+                });
+
+                const prices = sortedData.map(item => parseFloat(item.price));
+
+                // حذف نمودار قبلی
+                if (chartInstance) {
+                chartInstance.destroy();
+                }
+
+                // ایجاد نمودار جدید
+                chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                labels: labels,
+                datasets: [{
+                label: `قیمت ${name} (${symbol})`,
+                data: prices,
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderWidth: 2.5,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 3,
+                pointBackgroundColor: '#667eea',
+                pointBorderColor: 'white',
+                pointBorderWidth: 1.5,
+                pointHoverRadius: 5,
+                hoverBorderWidth: 3
+                }]
+                },
+                options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                mode: 'index',
+                intersect: false
+                },
+                plugins: {
+                legend: {
+                display: true,
+                labels: {
+                font: { family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", size: 14, weight: 'bold' },
+                padding: 15,
+                usePointStyle: true
+                }
+                },
+                tooltip: {
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                titleFont: { size: 14 },
+                bodyFont: { size: 13 },
+                padding: 12,
+                borderRadius: 8,
+                titleColor: '#fff',
+                bodyColor: '#fff',
+                displayColors: false,
+                callbacks: {
+                label: function (context) {
+                const idx = context.dataIndex;
+                const originalData = sortedData[idx];
+                const price = formatPrice(originalData.price);
+                const change = originalData.change_percent.toFixed(2);
+                const changeIcon = originalData.change_percent > 0 ? '📈' : originalData.change_percent < 0 ? '📉'
+                    : '⚖️' ; const absChange=Math.abs(change); const sign=originalData.change_percent> 0 ? '+' :
+                    originalData.change_percent < 0 ? '-' : '' ; const changeDisplay=`\u202A${sign}${absChange}%\u202C`;
+                        return `قیمت: ${price}\nتغییر: ${changeIcon} ${changeDisplay}`; }, title: function (context) {
+                        const idx=context[0].dataIndex; const originalData=sortedData[idx]; return `${originalData.date}
+                        - ${originalData.time}`; } } } }, scales: { y: { beginAtZero: false, title: { display: true,
+                        text: 'قیمت (تومان)' }, ticks: { callback: function (value) { return formatPrice(value); },
+                        font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.1)' } }, x: { ticks: { font: { size: 11 } },
+                        grid: { display: false } } } } }); } // Event Listeners
+                        document.getElementById('searchInput').addEventListener('input', filterAndRender);
+                        document.querySelectorAll('.tab-btn').forEach(btn=> {
+                        btn.addEventListener('click', () => {
+                        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        currentFilter = btn.dataset.filter;
+                        filterAndRender();
+                        });
+                        });
+
+                        // Close Modal on Outside Click
+                        document.getElementById('chartModal').addEventListener('click', (e) => {
+                        if (e.target.id === 'chartModal') {
+                        closeChartModal();
+                        }
+                        });
+
+                        // Close Modal on Escape Key
+                        document.addEventListener('keydown', (e) => {
+                        if (e.key === 'Escape' && document.getElementById('chartModal').classList.contains('active')) {
+                        closeChartModal();
+                        }
+                        });
+
+                        // Initial Load
+                        fetchData();
+
+                        // غیرفعال کردن تمام تعاملات روی عکس‌ها
+                        document.addEventListener('contextmenu', (e) => {
+                        if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                        e.preventDefault();
+                        return false;
+                        }
+                        }, true);
+
+                        document.addEventListener('mousedown', (e) => {
+                        if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                        e.preventDefault();
+                        return false;
+                        }
+                        }, true);
+
+                        document.addEventListener('dragstart', (e) => {
+                        if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                        e.preventDefault();
+                        return false;
+                        }
+                        }, true);
+
+                        document.addEventListener('dragover', (e) => {
+                        if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                        e.preventDefault();
+                        return false;
+                        }
+                        }, true);
+
+                        // Auto Refresh Every Minute
+                        setInterval(fetchData, 60000);
+
+                        // Scroll to Top Button
+                        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+                        let isVisible = false;
+
+                        // نمایش/مخفی کردن دکمه بر اساس scroll position
+                        window.addEventListener('scroll', () => {
+                        if (window.pageYOffset > 300) {
+                        if (!isVisible) {
+                        scrollToTopBtn.classList.remove('hide');
+                        scrollToTopBtn.style.display = 'flex';
+                        isVisible = true;
+                        }
+                        } else {
+                        if (isVisible) {
+                        scrollToTopBtn.classList.add('hide');
+                        setTimeout(() => {
+                        scrollToTopBtn.style.display = 'none';
+                        }, 300);
+                        isVisible = false;
+                        }
+                        }
+                        });
+
+                        // Scroll to Top Function
+                        function scrollToTop() {
+                        window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                        });
+                        }
+                        </script>
+</body>
+
+</html>
