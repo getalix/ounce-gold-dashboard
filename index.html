@@ -48,7 +48,7 @@
         }
 
         body.light-mode {
-            background: linear-gradient(135deg, #eff2f5 0%, #e0e5eb 100%);
+            background: linear-gradient(135deg, #e8ecf1 0%, #dce3eb 100%);
             color: #333;
         }
 
@@ -170,12 +170,20 @@
             --indicator-width: 0;
         }
 
+        .nav-tab:first-child {
+            margin-right: 4px;
+        }
+
+        .nav-tab:last-child {
+            margin-left: 4px;
+        }
+
         .nav-tabs::before {
             content: '';
             position: absolute;
             top: 8px;
-            left: var(--indicator-left);
-            width: var(--indicator-width);
+            left: calc(var(--indicator-left) + 8px);
+            width: calc(var(--indicator-width) - 8px);
             height: calc(100% - 16px);
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 24px;
@@ -183,6 +191,10 @@
             z-index: 1;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             pointer-events: none;
+        }
+
+        .nav-tabs.init::before {
+            transition: none;
         }
 
         body.dark-mode .nav-tabs {
@@ -202,7 +214,7 @@
         .nav-tab {
             flex: 1;
             min-width: 70px;
-            padding: 13px 18px;
+            padding: 13px 13px;
             text-align: center;
             cursor: pointer;
             border: none;
@@ -226,19 +238,49 @@
             color: rgba(255, 255, 255, 0.65);
         }
 
+        body.dark-mode .nav-tab:hover {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
         body.light-mode .nav-tab {
             color: rgba(0, 0, 0, 0.75);
         }
 
-        .nav-tab.active {
-            color: white;
+        body.light-mode .nav-tab:hover {
+            color: rgba(0, 0, 0, 0.6);
+        }
+
+        body.dark-mode .nav-tab.active {
+            color: rgba(255, 255, 255, 0.65);
             font-weight: 700;
+            animation: activeColorChange 0.4s ease-in-out forwards;
+        }
+
+        @keyframes activeColorChange {
+            from {
+                color: rgba(255, 255, 255, 0.65);
+            }
+
+            to {
+                color: white;
+            }
         }
 
         body.light-mode .nav-tab.active {
-            color: white;
+            color: rgba(0, 0, 0, 0.75);
+            font-weight: 700;
+            animation: activeColorChangeLight 0.4s ease-in-out forwards;
         }
 
+        @keyframes activeColorChangeLight {
+            from {
+                color: rgba(0, 0, 0, 0.75);
+            }
+
+            to {
+                color: white;
+            }
+        }
 
         /* ===== Header ===== */
         .header {
@@ -384,6 +426,11 @@
         body.dark-mode .price-card {
             background: #1e1e1e;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        body.light-mode .price-card {
+            background: #f0f3f7;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
         }
 
         .price-card:hover {
@@ -700,6 +747,14 @@
                 min-height: 38px;
             }
 
+            .nav-tab:first-child {
+                margin-right: 6px;
+            }
+
+            .nav-tab:last-child {
+                margin-left: 6px;
+            }
+
             .nav-tab.active {
                 transform: scale(1.06);
             }
@@ -717,6 +772,14 @@
                 font-size: 13px;
                 min-width: 55px;
                 min-height: 36px;
+            }
+
+            .nav-tab:first-child {
+                margin-right: 4px;
+            }
+
+            .nav-tab:last-child {
+                margin-left: 4px;
             }
 
             .nav-datetime {
@@ -773,6 +836,11 @@
         body.dark-mode .skeleton-card {
             background: #1e1e1e;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        body.light-mode .skeleton-card {
+            background: #f0f3f7;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
         }
 
         .skeleton-card::before {
@@ -945,7 +1013,7 @@
             <div class="nav-bot-name">OunceGoldBot@</div>
             <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()">🌙</button>
         </div>
-        <div class="nav-tabs">
+        <div class="nav-tabs init">
             <button class="nav-tab active" onclick="switchTab('all')">همه</button>
             <button class="nav-tab" onclick="switchTab('gold')">طلا و سکه</button>
             <button class="nav-tab" onclick="switchTab('currency')">ارز</button>
@@ -1088,7 +1156,7 @@
         }, { passive: true });
 
         // Update Indicator Position
-        function updateIndicator() {
+        function updateIndicator(skipTransition = false) {
             const activeTab = document.querySelector('.nav-tab.active');
             const navTabs = document.querySelector('.nav-tabs');
 
@@ -1101,6 +1169,13 @@
 
                 navTabs.style.setProperty('--indicator-left', `${offset}px`);
                 navTabs.style.setProperty('--indicator-width', `${width}px`);
+
+                // Remove init class to enable transition after first update
+                if (skipTransition && navTabs.classList.contains('init')) {
+                    requestAnimationFrame(() => {
+                        navTabs.classList.remove('init');
+                    });
+                }
             }
         }
 
@@ -1580,12 +1655,16 @@
 
         // Set initial theme indicator for nav tabs
         document.querySelectorAll('.nav-tab').forEach((tab, index) => {
-            if (index === 0) tab.classList.add('active');
+            if (index === 0) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
         });
 
-        // Update indicator on initial load and window resize
-        updateIndicator();
-        window.addEventListener('resize', updateIndicator);
+        // Update indicator on initial load (with skipTransition) and window resize
+        setTimeout(() => updateIndicator(true), 0);
+        window.addEventListener('resize', () => updateIndicator(false));
 
         // غیرفعال کردن تمام تعاملات روی عکس‌ها
         document.addEventListener('contextmenu', (e) => {
