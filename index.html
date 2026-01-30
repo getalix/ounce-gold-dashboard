@@ -452,6 +452,125 @@
             font-weight: bold;
         }
 
+        /* ===== Skeleton Loading ===== */
+        .skeleton-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .skeleton-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .skeleton-element {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        @keyframes skeleton-loading {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        .skeleton-header {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .skeleton-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            flex-shrink: 0;
+        }
+
+        .skeleton-title {
+            flex: 1;
+        }
+
+        .skeleton-title .line {
+            height: 16px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+
+        .skeleton-title .line:last-child {
+            width: 60%;
+        }
+
+        .skeleton-price {
+            height: 24px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .skeleton-change {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .skeleton-change-item {
+            flex: 1;
+        }
+
+        .skeleton-change-item .line {
+            height: 14px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+        }
+
+        .skeleton-footer {
+            height: 12px;
+            width: 70%;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        .skeleton-btn {
+            height: 32px;
+            border-radius: 6px;
+        }
+
+        /* ===== Chart Modal Loading ===== */
+        .modal-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .modal-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e0e0e0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
         /* ===== Scroll to Top Button ===== */
         #scrollToTopBtn {
             display: none;
@@ -652,9 +771,16 @@
         // Fetch Data from API (via Cloudflare Worker Proxy)
         async function fetchData() {
             try {
-                document.getElementById('loadingState').style.display = 'block';
+                document.getElementById('loadingState').style.display = 'none';
                 document.getElementById('priceGrid').innerHTML = '';
                 document.getElementById('emptyState').style.display = 'none';
+
+                // نمایش skeleton loading
+                const grid = document.getElementById('priceGrid');
+                const skeletonCount = 6;
+                for (let i = 0; i < skeletonCount; i++) {
+                    grid.appendChild(createSkeletonCard());
+                }
 
                 // درخواست از Worker proxy
                 const response = await fetch(`${API_URL}?section=gold,currency,cryptocurrency`);
@@ -731,6 +857,35 @@
                 document.getElementById('emptyState').style.display = 'none';
                 renderPrices(dataToRender);
             }
+        }
+
+        // Create Skeleton Card
+        function createSkeletonCard() {
+            const card = document.createElement('div');
+            card.className = 'price-card skeleton-card';
+            card.innerHTML = `
+                <div class="skeleton-header">
+                    <div class="skeleton-element skeleton-icon"></div>
+                    <div class="skeleton-title">
+                        <div class="skeleton-element line" style="height: 18px;"></div>
+                        <div class="skeleton-element line" style="height: 14px; width: 50%;"></div>
+                    </div>
+                </div>
+                <div class="skeleton-element skeleton-price"></div>
+                <div class="skeleton-change">
+                    <div class="skeleton-change-item">
+                        <div class="skeleton-element line" style="height: 12px; margin-bottom: 4px;"></div>
+                        <div class="skeleton-element line" style="height: 14px;"></div>
+                    </div>
+                    <div class="skeleton-change-item">
+                        <div class="skeleton-element line" style="height: 12px; margin-bottom: 4px;"></div>
+                        <div class="skeleton-element line" style="height: 14px;"></div>
+                    </div>
+                </div>
+                <div class="skeleton-element skeleton-footer"></div>
+                <div class="skeleton-element skeleton-btn"></div>
+            `;
+            return card;
         }
 
         // Render Price Cards
@@ -858,6 +1013,15 @@
             document.getElementById('chartModalSymbol').textContent = symbol;
             document.getElementById('chartModal').classList.add('active');
 
+            // نمایش loading state
+            const chartContainer = document.getElementById('priceChart').parentElement;
+            chartContainer.innerHTML = `
+                <div class="modal-loading">
+                    <div class="modal-spinner"></div>
+                    <p style="color: #999;">در حال بارگذاری نمودار...</p>
+                </div>
+            `;
+
             await fetchHistoryData(symbol);
         }
 
@@ -965,9 +1129,10 @@
                                     const originalData = sortedData[idx];
                                     const price = formatPrice(originalData.price);
                                     const change = originalData.change_percent.toFixed(2);
-                                    const changeIcon = originalData.change_percent > 0 ? '📈 +' : originalData.change_percent < 0 ? '📉 -' : '⚖️ ';
+                                    const changeIcon = originalData.change_percent > 0 ? '📈' : originalData.change_percent < 0 ? '📉' : '⚖️';
                                     const absChange = Math.abs(change);
-                                    return `قیمت: ${price}\nتغییر: ${changeIcon}${absChange}%`;
+                                    const sign = originalData.change_percent > 0 ? '+' : originalData.change_percent < 0 ? '-' : '';
+                                    return `قیمت: ${price}\nتغییر: ${sign}${absChange}% ${changeIcon}`;
                                 },
                                 title: function (context) {
                                     const idx = context[0].dataIndex;
