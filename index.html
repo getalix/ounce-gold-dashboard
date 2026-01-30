@@ -116,6 +116,8 @@
             font-size: 14px;
             font-weight: 500;
             transition: all 0.3s;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .tab-btn:hover {
@@ -370,6 +372,8 @@
             cursor: pointer;
             color: #999;
             transition: all 0.3s;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .close-btn:hover {
@@ -460,10 +464,11 @@
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
             animation: slideUp 0.3s ease;
-            display: flex;
             align-items: center;
             justify-content: center;
             padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         @keyframes slideUp {
@@ -476,6 +481,22 @@
                 transform: translateY(0);
                 opacity: 1;
             }
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+        }
+
+        #scrollToTopBtn.hide {
+            animation: slideDown 0.3s ease forwards;
         }
 
         #scrollToTopBtn:hover {
@@ -546,7 +567,8 @@
     <!-- Scroll to Top Button -->
     <button id="scrollToTopBtn" onclick="scrollToTop()">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" stroke="white"
-            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+            style="user-select: none; pointer-events: none;">
             <path d="M12 5v14M5 12l7-7 7 7" />
         </svg>
     </button>
@@ -1035,13 +1057,24 @@
 
         // Scroll to Top Button
         const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+        let isVisible = false;
 
         // نمایش/مخفی کردن دکمه بر اساس scroll position
         window.addEventListener('scroll', () => {
             if (window.pageYOffset > 300) {
-                scrollToTopBtn.style.display = 'block';
+                if (!isVisible) {
+                    scrollToTopBtn.classList.remove('hide');
+                    scrollToTopBtn.style.display = 'flex';
+                    isVisible = true;
+                }
             } else {
-                scrollToTopBtn.style.display = 'none';
+                if (isVisible) {
+                    scrollToTopBtn.classList.add('hide');
+                    setTimeout(() => {
+                        scrollToTopBtn.style.display = 'none';
+                    }, 300);
+                    isVisible = false;
+                }
             }
         });
 
