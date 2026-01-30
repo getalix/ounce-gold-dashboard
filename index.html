@@ -649,9 +649,9 @@
 
             // ساخت آدرس آیکن از API (از path_icon در پاسخ API)
             let iconElement = '';
-            if (item.url_base_icon && item.path_icon) {
-                // استفاده از url_base_icon و path_icon از API
-                const iconUrl = `${item.url_base_icon}/128x128/${item.path_icon}`;
+            if (item.path_icon) {
+                // استفاده از آدرس پایه ثابت + path_icon
+                const iconUrl = `https://brsapi.ir/Api/Market/GCC/Icon/256x256/${item.path_icon}`;
                 iconElement = `<img src="${iconUrl}" alt="${item.symbol}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none;" draggable="false" onerror="this.parentElement.innerHTML='<div style=&quot;width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;&quot;>${item.symbol}</div>'">`;
             } else if (item.symbol) {
                 // Fallback: نمایش symbol به صورت متنی اگر icon موجود نباشد
@@ -660,7 +660,23 @@
                 iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">💰</div>`;
             }
 
-            const price = formatPrice(item.price);
+            // برای ارزهای دیجیتال (crypto) از price_toman استفاده کن
+            let price = item.price;
+            let unit = item.unit;
+
+            if (item.type === 'crypto') {
+                // اگر USDT باشد، قیمت دلاری همیشه 1 است
+                if (item.symbol === 'USDT') {
+                    price = '1';
+                    unit = 'دلار';
+                } else {
+                    // برای بقیه ارزهای دیجیتال، از price_toman استفاده کن
+                    price = item.price_toman;
+                    unit = 'تومان';
+                }
+            }
+
+            price = formatPrice(price);
             const changeValue = formatPrice(Math.abs(item.change_value || 0));
 
             card.innerHTML = `
@@ -676,7 +692,7 @@
                 
                 <div class="card-price">
                     ${price}
-                    <span class="unit">${item.unit}</span>
+                    <span class="unit">${unit}</span>
                 </div>
                 
                 <div class="card-change">
