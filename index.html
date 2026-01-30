@@ -170,6 +170,7 @@
             cursor: pointer;
             position: relative;
             overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .price-card:hover {
@@ -209,6 +210,7 @@
             -ms-user-select: none;
             cursor: default;
             pointer-events: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .card-icon img {
@@ -221,6 +223,7 @@
             cursor: default;
             display: block;
             -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .card-title {
@@ -440,6 +443,56 @@
             color: #667eea;
             font-weight: bold;
         }
+
+        /* ===== Scroll to Top Button ===== */
+        #scrollToTopBtn {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            z-index: 999;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        #scrollToTopBtn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        #scrollToTopBtn:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            #scrollToTopBtn {
+                bottom: 20px;
+                left: 20px;
+                width: 45px;
+                height: 45px;
+                font-size: 20px;
+            }
+        }
     </style>
 </head>
 
@@ -486,6 +539,9 @@
             <p>جستجوی شما مطابق با هیچ‌کدام از نتایج نیست</p>
         </div>
     </div>
+
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTopBtn" onclick="scrollToTop()">⬆️</button>
 
     <!-- Chart Modal -->
     <div class="modal" id="chartModal">
@@ -968,6 +1024,26 @@
 
         // Auto Refresh Every Minute
         setInterval(fetchData, 60000);
+
+        // Scroll to Top Button
+        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+
+        // نمایش/مخفی کردن دکمه بر اساس scroll position
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                scrollToTopBtn.style.display = 'block';
+            } else {
+                scrollToTopBtn.style.display = 'none';
+            }
+        });
+
+        // Scroll to Top Function
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
     </script>
 </body>
 
