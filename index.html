@@ -189,6 +189,19 @@
             align-items: center;
             justify-content: center;
             font-size: 28px;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        .card-icon img {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            -webkit-user-drag: none;
+            pointer-events: none;
         }
 
         .card-title {
@@ -499,9 +512,26 @@
             return result;
         }
 
-        // Format Price with Separators
+        // Format Price with Separators (برای ارزهای اعشاری و معمولی)
         function formatPrice(price) {
-            return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            // اگر قیمت string و با 0. شروع می‌شود، دقیقاً همان را نمایش بده
+            if (typeof price === 'string' && price.startsWith('0.')) {
+                return price;
+            }
+
+            price = parseFloat(price);
+
+            // اگر قیمت خیلی پایین باشد (مثل رمزارزهایی که < 1)
+            if (price < 1) {
+                // نمایش 6 رقم اعشار برای ارزهای بسیار پایین
+                return price.toFixed(6).replace(/\.?0+$/, '');
+            } else if (price < 100) {
+                // نمایش 2 رقم اعشار برای ارزهای کمتر از 100
+                return price.toFixed(2).replace(/\.?0+$/, '');
+            } else {
+                // نمایش بدون اعشار + separator برای ارزهای بزرگ
+                return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            }
         }
 
         // Format Time
@@ -613,18 +643,20 @@
             const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
             const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
 
-            // ساخت آدرس آیکن از API (BRS API)
+            // ساخت آدرس آیکن از API (از path_icon در پاسخ API)
             let iconElement = '';
-            if (item.symbol) {
-                // استفاده از BRS API برای آیکون‌ها
-                const iconUrl = `https://brsapi.ir/Api/Market/GCC/Icon/128x128/${item.symbol}.png`;
-                iconElement = `<img src="${iconUrl}" alt="${item.symbol}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain;" onerror="this.parentElement.innerHTML='<div style=&quot;width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;&quot;>${item.symbol}</div>'">`;
+            if (item.url_base_icon && item.path_icon) {
+                // استفاده از url_base_icon و path_icon از API
+                const iconUrl = `${item.url_base_icon}/128x128/${item.path_icon}`;
+                iconElement = `<img src="${iconUrl}" alt="${item.symbol}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none;" draggable="false" onerror="this.parentElement.innerHTML='<div style=&quot;width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;&quot;>${item.symbol}</div>'">`;
+            } else if (item.symbol) {
+                // Fallback: نمایش symbol به صورت متنی اگر icon موجود نباشد
+                iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">${item.symbol}</div>`;
             } else {
-                // Fallback: نمایش symbol به صورت متنی
                 iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">💰</div>`;
             }
 
-            const price = formatPrice(Math.round(item.price));
+            const price = formatPrice(item.price);
             const changeValue = formatPrice(Math.abs(item.change_value || 0));
 
             card.innerHTML = `
@@ -853,6 +885,22 @@
 
         // Initial Load
         fetchData();
+
+        // غیرفعال کردن right-click روی عکس‌ها
+        document.addEventListener('contextmenu', (e) => {
+            if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                e.preventDefault();
+                return false;
+            }
+        }, true);
+
+        // غیرفعال کردن drag برای عکس‌ها
+        document.addEventListener('dragstart', (e) => {
+            if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                e.preventDefault();
+                return false;
+            }
+        }, true);
 
         // Auto Refresh Every Minute
         setInterval(fetchData, 60000);
