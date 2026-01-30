@@ -83,7 +83,7 @@
         }
 
         .nav-header {
-            padding: 15px 20px;
+            padding: 12px 15px;
             border-bottom: 1px solid #f0f0f0;
             display: flex;
             justify-content: space-between;
@@ -97,105 +97,99 @@
         .nav-info {
             display: flex;
             flex-direction: row;
-            gap: 15px;
+            gap: 10px;
             align-items: center;
+            flex: 1;
+            justify-content: center;
         }
 
         .nav-bot-name {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
-            color: #667eea;
+            color: #999;
         }
 
         body.dark-mode .nav-bot-name {
-            color: #8b9fff;
+            color: #aaa;
         }
 
         .nav-datetime {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 700;
-            color: #667eea;
+            color: #999;
             font-family: 'Courier New', monospace;
         }
 
         body.dark-mode .nav-datetime {
-            color: #8b9fff;
+            color: #aaa;
         }
 
         .theme-toggle {
             background: none;
             border: none;
-            font-size: 18px;
+            font-size: 20px;
             cursor: pointer;
-            padding: 5px;
+            padding: 5px 10px;
+            transition: transform 0.2s;
+        }
+
+        .theme-toggle:active {
+            transform: scale(0.95);
         }
 
         .nav-tabs {
             display: flex;
             overflow-x: auto;
             scroll-behavior: smooth;
-            gap: 0;
-            padding: 0;
+            gap: 8px;
+            padding: 10px 10px;
+            background: transparent;
         }
 
         .nav-tabs::-webkit-scrollbar {
-            height: 3px;
-        }
-
-        .nav-tabs::-webkit-scrollbar-track {
-            background: #f0f0f0;
-        }
-
-        body.dark-mode .nav-tabs::-webkit-scrollbar-track {
-            background: #333;
-        }
-
-        .nav-tabs::-webkit-scrollbar-thumb {
-            background: #667eea;
-            border-radius: 3px;
+            height: 0;
         }
 
         .nav-tab {
-            flex: 1;
-            min-width: 25%;
-            padding: 15px;
+            flex: 0 0 auto;
+            padding: 8px 16px;
             text-align: center;
             cursor: pointer;
             border: none;
-            background: white;
+            background: rgba(102, 126, 234, 0.1);
             color: #999;
-            font-size: 15px;
-            font-weight: 700;
+            font-size: 14px;
+            font-weight: 600;
             white-space: nowrap;
-            transition: all 0.3s;
-            border-bottom: 3px solid transparent;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 20px;
             -webkit-tap-highlight-color: transparent;
             position: relative;
         }
 
         body.dark-mode .nav-tab {
-            background: #2d2d44;
+            background: rgba(139, 159, 255, 0.1);
             color: #aaa;
         }
 
         .nav-tab.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-            background: rgba(102, 126, 234, 0.05);
+            color: white;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
 
         body.dark-mode .nav-tab.active {
-            color: #8b9fff;
-            border-bottom-color: #8b9fff;
-            background: rgba(139, 159, 255, 0.08);
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 12px rgba(139, 159, 255, 0.3);
         }
 
-        .nav-tab:hover {
-            background: #f5f7fa;
+        .nav-tab:hover:not(.active) {
+            background: rgba(102, 126, 234, 0.15);
         }
 
-        body.dark-mode .nav-tab:hover {
-            background: #353550;
+        body.dark-mode .nav-tab:hover:not(.active) {
+            background: rgba(139, 159, 255, 0.15);
         }
 
         /* ===== Header ===== */
@@ -210,21 +204,24 @@
 
         /* ===== Search Container ===== */
         .search-container {
-            padding: 20px 10px;
+            padding: 15px 10px;
             position: sticky;
             top: 0;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: transparent;
             z-index: 990;
             transition: background 0.3s ease;
         }
 
-        body.light-mode .search-container {
-            background: linear-gradient(135deg, #eff2f5 0%, #e0e5eb 100%);
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
         }
 
         .search-input {
             width: 100%;
-            padding: 12px 16px;
+            padding: 12px 16px 12px 16px;
+            padding-right: 45px;
             border: none;
             border-radius: 25px;
             background: white;
@@ -233,6 +230,38 @@
             transition: all 0.3s;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             outline: none;
+        }
+
+        .search-clear {
+            position: absolute;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #999;
+            cursor: pointer;
+            padding: 5px;
+            display: none;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            line-height: 1;
+        }
+
+        .search-clear:hover {
+            color: #333;
+            transform: scale(1.1);
+        }
+
+        .search-clear.visible {
+            display: block;
+        }
+
+        body.dark-mode .search-clear {
+            color: #aaa;
+        }
+
+        body.dark-mode .search-clear:hover {
+            color: #e0e0e0;
         }
 
         body.dark-mode .search-input {
@@ -844,7 +873,10 @@
 
         <!-- Search Box -->
         <div class="search-container">
-            <input type="text" id="searchInput" placeholder="🔍 جستجو..." class="search-input">
+            <div class="search-wrapper">
+                <input type="text" id="searchInput" placeholder="جستجو..." class="search-input">
+                <button class="search-clear" id="searchClear" onclick="clearSearch()">×</button>
+            </div>
         </div>
 
         <!-- Loading State -->
@@ -956,12 +988,25 @@
 
         // Format Time
         function formatTime(date) {
-            return date.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
         }
 
-        // Format Date (Jalali)
+        // Format Date (Jalali with English digits)
         function formatDateJalali(date) {
-            return date.toLocaleDateString('fa-IR');
+            const jalaliDate = date.toLocaleDateString('fa-IR');
+            // تبدیل اعداد فارسی به انگلیسی
+            return jalaliDate.replace(/\u06F0/g, '0')
+                .replace(/\u06F1/g, '1')
+                .replace(/\u06F2/g, '2')
+                .replace(/\u06F3/g, '3')
+                .replace(/\u06F4/g, '4')
+                .replace(/\u06F5/g, '5')
+                .replace(/\u06F6/g, '6')
+                .replace(/\u06F7/g, '7')
+                .replace(/\u06F8/g, '8')
+                .replace(/\u06F9/g, '9');
         }
 
         // Update bottom nav datetime
@@ -992,12 +1037,23 @@
             }
         }
 
-        // Handle scroll for bottom nav animation
+        // Advanced Scroll Manager
         let lastScrollTop = 0;
+        let isScrollingToTop = false;
+        let isVisible = false;
+
         window.addEventListener('scroll', () => {
             const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
             const bottomNav = document.getElementById('bottomNav');
+            const scrollBtn = document.getElementById('scrollToTopBtn');
 
+            // اگر در حال scroll to top هستیم، snack bar نباید جنبش کند
+            if (isScrollingToTop) {
+                bottomNav.classList.remove('hidden');
+                return;
+            }
+
+            // منطق snack bar
             if (scrollTop > lastScrollTop && scrollTop > 200) {
                 // scrolling down
                 bottomNav.classList.add('hidden');
@@ -1005,8 +1061,26 @@
                 // scrolling up
                 bottomNav.classList.remove('hidden');
             }
+
+            // منطق scroll button
+            if (scrollTop > 300) {
+                if (!isVisible) {
+                    scrollBtn.classList.remove('hide');
+                    scrollBtn.style.display = 'flex';
+                    isVisible = true;
+                }
+            } else {
+                if (isVisible) {
+                    scrollBtn.classList.add('hide');
+                    setTimeout(() => {
+                        scrollBtn.style.display = 'none';
+                    }, 300);
+                    isVisible = false;
+                }
+            }
+
             lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
-        });
+        }, { passive: true });
 
         // Switch tab
         function switchTab(filter) {
@@ -1430,16 +1504,25 @@
             });
         }
 
-        // Event Listeners
-        document.getElementById('searchInput').addEventListener('input', filterAndRender);
+        // Clear Search Input
+        function clearSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const clearBtn = document.getElementById('searchClear');
+            searchInput.value = '';
+            clearBtn.classList.remove('visible');
+            filterAndRender();
+            searchInput.focus();
+        }
 
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentFilter = btn.dataset.filter;
-                filterAndRender();
-            });
+        // Event Listeners
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const clearBtn = document.getElementById('searchClear');
+            if (e.target.value.length > 0) {
+                clearBtn.classList.add('visible');
+            } else {
+                clearBtn.classList.remove('visible');
+            }
+            filterAndRender();
         });
 
         // Close Modal on Outside Click
@@ -1524,35 +1607,21 @@
         // Auto Refresh Every Minute
         setInterval(fetchData, 60000);
 
-        // Scroll to Top Button
-        const scrollToTopBtn = document.getElementById('scrollToTopBtn');
-        let isVisible = false;
-
-        // نمایش/مخفی کردن دکمه بر اساس scroll position
-        window.addEventListener('scroll', () => {
-            if (window.pageYOffset > 300) {
-                if (!isVisible) {
-                    scrollToTopBtn.classList.remove('hide');
-                    scrollToTopBtn.style.display = 'flex';
-                    isVisible = true;
-                }
-            } else {
-                if (isVisible) {
-                    scrollToTopBtn.classList.add('hide');
-                    setTimeout(() => {
-                        scrollToTopBtn.style.display = 'none';
-                    }, 300);
-                    isVisible = false;
-                }
-            }
-        });
-
         // Scroll to Top Function
         function scrollToTop() {
+            isScrollingToTop = true;
+            const bottomNav = document.getElementById('bottomNav');
+            bottomNav.classList.remove('hidden');
+
             window.scrollTo({
                 top: 0,
                 behavior: 'smooth'
             });
+
+            // تنظیم flag پس از اتمام scroll
+            setTimeout(() => {
+                isScrollingToTop = false;
+            }, 1000);
         }
     </script>
 </body>
