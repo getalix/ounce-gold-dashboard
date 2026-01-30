@@ -613,14 +613,15 @@
             const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
             const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
 
-            // ساخت آدرس آیکن از API
+            // ساخت آدرس آیکن از API (BRS API)
             let iconElement = '';
-            if (item.url_base_icon && item.path_icon) {
-                const iconUrl = `${item.url_base_icon}/64x64/${item.path_icon}`;
-                iconElement = `<img src="${iconUrl}" alt="${item.symbol}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain;" onerror="this.style.display='none'">`;
+            if (item.symbol) {
+                // استفاده از BRS API برای آیکون‌ها
+                const iconUrl = `https://brsapi.ir/Api/Market/GCC/Icon/128x128/${item.symbol}.png`;
+                iconElement = `<img src="${iconUrl}" alt="${item.symbol}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain;" onerror="this.parentElement.innerHTML='<div style=&quot;width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;&quot;>${item.symbol}</div>'">`;
             } else {
                 // Fallback: نمایش symbol به صورت متنی
-                iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">${item.symbol}</div>`;
+                iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">💰</div>`;
             }
 
             const price = formatPrice(Math.round(item.price));
