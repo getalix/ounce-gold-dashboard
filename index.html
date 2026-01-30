@@ -88,29 +88,11 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
         }
 
         body.dark-mode .nav-header {
             border-bottom-color: #444;
-        }
-
-        .nav-info {
-            display: flex;
-            flex-direction: row;
-            gap: 10px;
-            align-items: center;
-            flex: 1;
-            justify-content: center;
-        }
-
-        .nav-bot-name {
-            font-size: 14px;
-            font-weight: 700;
-            color: #999;
-        }
-
-        body.dark-mode .nav-bot-name {
-            color: #aaa;
         }
 
         .nav-datetime {
@@ -121,6 +103,18 @@
         }
 
         body.dark-mode .nav-datetime {
+            color: #aaa;
+        }
+
+        .nav-bot-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: #999;
+            flex: 1;
+            text-align: center;
+        }
+
+        body.dark-mode .nav-bot-name {
             color: #aaa;
         }
 
@@ -142,7 +136,7 @@
             overflow-x: auto;
             scroll-behavior: smooth;
             gap: 8px;
-            padding: 10px 10px;
+            padding: 12px 10px;
             background: transparent;
         }
 
@@ -152,17 +146,17 @@
 
         .nav-tab {
             flex: 0 0 auto;
-            padding: 8px 16px;
+            padding: 10px 18px;
             text-align: center;
             cursor: pointer;
-            border: none;
+            border: 1px solid transparent;
             background: rgba(102, 126, 234, 0.1);
             color: #999;
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 600;
             white-space: nowrap;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 20px;
+            border-radius: 22px;
             -webkit-tap-highlight-color: transparent;
             position: relative;
         }
@@ -176,20 +170,24 @@
             color: white;
             background: linear-gradient(135deg, #667eea, #764ba2);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            border: 1px solid rgba(102, 126, 234, 0.3);
         }
 
         body.dark-mode .nav-tab.active {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             box-shadow: 0 4px 12px rgba(139, 159, 255, 0.3);
+            border: 1px solid rgba(139, 159, 255, 0.3);
         }
 
         .nav-tab:hover:not(.active) {
             background: rgba(102, 126, 234, 0.15);
+            border: 1px solid rgba(102, 126, 234, 0.2);
         }
 
         body.dark-mode .nav-tab:hover:not(.active) {
             background: rgba(139, 159, 255, 0.15);
+            border: 1px solid rgba(139, 159, 255, 0.2);
         }
 
         /* ===== Header ===== */
@@ -220,8 +218,7 @@
 
         .search-input {
             width: 100%;
-            padding: 12px 16px 12px 16px;
-            padding-right: 45px;
+            padding: 12px 16px 12px 45px;
             border: none;
             border-radius: 25px;
             background: white;
@@ -234,7 +231,7 @@
 
         .search-clear {
             position: absolute;
-            right: 15px;
+            left: 15px;
             background: none;
             border: none;
             font-size: 20px;
@@ -584,7 +581,7 @@
 
         .chart-container {
             position: relative;
-            height: 400px;
+            height: 450px;
             margin-bottom: 20px;
             background: white;
             border-radius: 8px;
@@ -832,6 +829,12 @@
             }
         }
 
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         #scrollToTopBtn.hide {
             animation: slideDown 0.3s ease forwards;
         }
@@ -908,11 +911,9 @@
     <!-- Bottom Navigation Bar -->
     <div class="bottom-nav" id="bottomNav">
         <div class="nav-header">
+            <div class="nav-datetime"><span id="navDate">--/--/--</span> <span id="navTime">--:--</span></div>
+            <div class="nav-bot-name">@OunceGoldBot</div>
             <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()">🌙</button>
-            <div class="nav-info">
-                <div class="nav-datetime"><span id="navDate">--/--/--</span> <span id="navTime">--:--</span></div>
-                <div class="nav-bot-name">@OunceGoldBot</div>
-            </div>
         </div>
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="switchTab('all')">همه</button>
@@ -1338,9 +1339,14 @@
             // اضافه کردن overflow hidden به body
             document.body.classList.add('modal-open');
 
-            // نمایش skeleton loading برای نمودار
+            // نمایش loading برای نمودار
             const chartContainer = document.getElementById('priceChart').parentElement;
-            chartContainer.innerHTML = '<div class="chart-skeleton"></div>';
+            chartContainer.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: center; height: 450px; flex-direction: column; gap: 20px;">
+                    <div style="width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="color: #999; font-size: 14px;">در حال بارگذاری نمودار...</p>
+                </div>
+            `;
 
             await fetchHistoryData(symbol);
         }
