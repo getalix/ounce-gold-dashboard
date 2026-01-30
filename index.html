@@ -165,12 +165,52 @@
             }
         }
 
-        /* ===== Price Grid ===== */
+        /* ===== Price Grid (Bento Layout) ===== */
         .price-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 15px;
             margin-bottom: 20px;
+        }
+
+        .price-card:nth-child(1) {
+            grid-column: span 2;
+            grid-row: span 2;
+        }
+
+        .price-card:nth-child(2) {
+            grid-column: span 1;
+            grid-row: span 1;
+        }
+
+        .price-card:nth-child(3) {
+            grid-column: span 1;
+            grid-row: span 1;
+        }
+
+        .price-card:nth-child(4) {
+            grid-column: span 2;
+            grid-row: span 1;
+        }
+
+        .price-card:nth-child(5) {
+            grid-column: span 1;
+            grid-row: span 1;
+        }
+
+        .price-card:nth-child(6) {
+            grid-column: span 1;
+            grid-row: span 1;
+        }
+
+        .price-card:nth-child(7) {
+            grid-column: span 2;
+            grid-row: span 1;
+        }
+
+        .price-card:nth-child(8) {
+            grid-column: span 2;
+            grid-row: span 1;
         }
 
         .price-card {
@@ -402,9 +442,43 @@
         }
 
         /* ===== Responsive ===== */
+        @media (max-width: 1024px) {
+            .price-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .price-card:nth-child(1) {
+                grid-column: span 1;
+                grid-row: span 1;
+            }
+
+            .price-card:nth-child(4) {
+                grid-column: span 1;
+                grid-row: span 1;
+            }
+
+            .price-card:nth-child(7) {
+                grid-column: span 1;
+                grid-row: span 1;
+            }
+
+            .price-card:nth-child(8) {
+                grid-column: span 1;
+                grid-row: span 1;
+            }
+        }
+
         @media (max-width: 768px) {
             .price-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .price-card:nth-child(1),
+            .price-card:nth-child(4),
+            .price-card:nth-child(7),
+            .price-card:nth-child(8) {
+                grid-column: span 1;
+                grid-row: span 1;
             }
 
             .controls {
