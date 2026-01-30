@@ -36,10 +36,10 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
             padding: 0;
-            color: #333;
+            color: #e0e0e0;
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
@@ -47,9 +47,9 @@
             transition: background 0.3s ease;
         }
 
-        body.dark-mode {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            color: #e0e0e0;
+        body.light-mode {
+            background: linear-gradient(135deg, #eff2f5 0%, #e0e5eb 100%);
+            color: #333;
         }
 
         .container {
@@ -66,6 +66,8 @@
             right: 0;
             background: white;
             border-top: 1px solid #e0e0e0;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
             z-index: 995;
             transition: all 0.3s ease;
             box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
@@ -76,8 +78,12 @@
             border-top-color: #444;
         }
 
+        .bottom-nav.hidden {
+            transform: translateY(150px);
+        }
+
         .nav-header {
-            padding: 15px;
+            padding: 15px 20px;
             border-bottom: 1px solid #f0f0f0;
             display: flex;
             justify-content: space-between;
@@ -90,13 +96,14 @@
 
         .nav-info {
             display: flex;
-            flex-direction: column;
-            gap: 3px;
+            flex-direction: row;
+            gap: 15px;
+            align-items: center;
         }
 
         .nav-bot-name {
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 16px;
+            font-weight: 700;
             color: #667eea;
         }
 
@@ -105,12 +112,14 @@
         }
 
         .nav-datetime {
-            font-size: 12px;
-            color: #999;
+            font-size: 16px;
+            font-weight: 700;
+            color: #667eea;
+            font-family: 'Courier New', monospace;
         }
 
         body.dark-mode .nav-datetime {
-            color: #aaa;
+            color: #8b9fff;
         }
 
         .theme-toggle {
@@ -155,12 +164,13 @@
             border: none;
             background: white;
             color: #999;
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 15px;
+            font-weight: 700;
             white-space: nowrap;
             transition: all 0.3s;
             border-bottom: 3px solid transparent;
             -webkit-tap-highlight-color: transparent;
+            position: relative;
         }
 
         body.dark-mode .nav-tab {
@@ -171,15 +181,17 @@
         .nav-tab.active {
             color: #667eea;
             border-bottom-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
         }
 
         body.dark-mode .nav-tab.active {
             color: #8b9fff;
             border-bottom-color: #8b9fff;
+            background: rgba(139, 159, 255, 0.08);
         }
 
         .nav-tab:hover {
-            background: #f9f9f9;
+            background: #f5f7fa;
         }
 
         body.dark-mode .nav-tab:hover {
@@ -194,6 +206,51 @@
         /* ===== Search & Filter ===== */
         .controls {
             display: none;
+        }
+
+        /* ===== Search Container ===== */
+        .search-container {
+            padding: 20px 10px;
+            position: sticky;
+            top: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            z-index: 990;
+            transition: background 0.3s ease;
+        }
+
+        body.light-mode .search-container {
+            background: linear-gradient(135deg, #eff2f5 0%, #e0e5eb 100%);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 25px;
+            background: white;
+            color: #333;
+            font-size: 14px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            outline: none;
+        }
+
+        body.dark-mode .search-input {
+            background: #353550;
+            color: #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .search-input::placeholder {
+            color: #999;
+        }
+
+        body.dark-mode .search-input::placeholder {
+            color: #aaa;
+        }
+
+        .search-input:focus {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
 
         /* ===== Loading Spinner ===== */
@@ -229,7 +286,7 @@
         }
 
         .price-card {
-            background: white;
+            background: #f9f9fb;
             border-radius: 12px;
             padding: 20px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
@@ -271,7 +328,7 @@
             width: 50px;
             height: 50px;
             border-radius: 10px;
-            background: #f5f5f5;
+            background: none;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -332,9 +389,17 @@
             gap: 5px;
         }
 
+        body.dark-mode .card-price {
+            color: #7dd3ff;
+        }
+
         .card-price .unit {
             font-size: 13px;
             color: #999;
+        }
+
+        body.dark-mode .card-price .unit {
+            color: #aaa;
         }
 
         .card-change {
@@ -438,6 +503,10 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
 
+        body.dark-mode .modal-content {
+            background: #2d2d44;
+        }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
@@ -447,9 +516,17 @@
             border-bottom: 2px solid #f0f0f0;
         }
 
+        body.dark-mode .modal-header {
+            border-bottom-color: #444;
+        }
+
         .modal-header h2 {
             font-size: 20px;
             color: #333;
+        }
+
+        body.dark-mode .modal-header h2 {
+            color: #e0e0e0;
         }
 
         .close-btn {
@@ -464,14 +541,29 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        body.dark-mode .close-btn {
+            color: #aaa;
+        }
+
         .close-btn:hover {
             color: #333;
+        }
+
+        body.dark-mode .close-btn:hover {
+            color: #e0e0e0;
         }
 
         .chart-container {
             position: relative;
             height: 400px;
             margin-bottom: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        body.dark-mode .chart-container {
+            background: #1a1a2e;
         }
 
         /* ===== Responsive ===== */
@@ -667,15 +759,15 @@
         #scrollToTopBtn {
             display: none;
             position: fixed;
-            bottom: 30px;
-            left: 30px;
+            bottom: 155px;
+            left: 20px;
             width: 50px;
             height: 50px;
             background: linear-gradient(135deg, #667eea, #764ba2);
             border: none;
             border-radius: 50%;
             cursor: pointer;
-            z-index: 999;
+            z-index: 996;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
             transition: all 0.3s ease;
             animation: slideUp 0.3s ease;
@@ -750,17 +842,9 @@
             <span id="autoUpdateStatus"> | 🔄 به‌روزرسانی خودکار فعال است</span>
         </div>
 
-        <!-- Search & Filter -->
-        <div class="controls">
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="جستجو در میان قیمت‌ها...">
-            </div>
-            <div class="filter-tabs">
-                <button class="tab-btn active" data-filter="all">📊 همه</button>
-                <button class="tab-btn" data-filter="gold">🥇 طلا</button>
-                <button class="tab-btn" data-filter="currency">💱 ارز</button>
-                <button class="tab-btn" data-filter="crypto">₿ رمزارز</button>
-            </div>
+        <!-- Search Box -->
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="🔍 جستجو..." class="search-input">
         </div>
 
         <!-- Loading State -->
@@ -792,17 +876,17 @@
     <!-- Bottom Navigation Bar -->
     <div class="bottom-nav" id="bottomNav">
         <div class="nav-header">
-            <div class="nav-info">
-                <div class="nav-bot-name">@OunceGoldBot</div>
-                <div class="nav-datetime"><span id="navDate">--/--/--</span> <span id="navTime">--:--</span></div>
-            </div>
             <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()">🌙</button>
+            <div class="nav-info">
+                <div class="nav-datetime"><span id="navDate">--/--/--</span> <span id="navTime">--:--</span></div>
+                <div class="nav-bot-name">@OunceGoldBot</div>
+            </div>
         </div>
         <div class="nav-tabs">
-            <button class="nav-tab active" onclick="switchTab('all')">📊 همه</button>
-            <button class="nav-tab" onclick="switchTab('gold')">🥇 طلا</button>
-            <button class="nav-tab" onclick="switchTab('currency')">💱 ارز</button>
-            <button class="nav-tab" onclick="switchTab('crypto')">₿ رمز ارز</button>
+            <button class="nav-tab active" onclick="switchTab('all')">همه</button>
+            <button class="nav-tab" onclick="switchTab('gold')">طلا</button>
+            <button class="nav-tab" onclick="switchTab('currency')">ارز</button>
+            <button class="nav-tab" onclick="switchTab('crypto')">رمز ارز</button>
         </div>
     </div>
     <div class="modal" id="chartModal">
@@ -890,6 +974,7 @@
         // Toggle Dark Mode
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
+            document.body.classList.toggle('light-mode');
             const isDark = document.body.classList.contains('dark-mode');
             document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
             localStorage.setItem('darkMode', isDark ? 'true' : 'false');
@@ -897,12 +982,31 @@
 
         // Load dark mode preference
         function loadDarkModePreference() {
-            const isDark = localStorage.getItem('darkMode') === 'true';
+            const isDark = localStorage.getItem('darkMode') !== 'false'; // پیش‌فرض dark mode
             if (isDark) {
                 document.body.classList.add('dark-mode');
                 document.getElementById('themeToggle').textContent = '☀️';
+            } else {
+                document.body.classList.add('light-mode');
+                document.getElementById('themeToggle').textContent = '🌙';
             }
         }
+
+        // Handle scroll for bottom nav animation
+        let lastScrollTop = 0;
+        window.addEventListener('scroll', () => {
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const bottomNav = document.getElementById('bottomNav');
+
+            if (scrollTop > lastScrollTop && scrollTop > 200) {
+                // scrolling down
+                bottomNav.classList.add('hidden');
+            } else {
+                // scrolling up
+                bottomNav.classList.remove('hidden');
+            }
+            lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+        });
 
         // Switch tab
         function switchTab(filter) {
@@ -1358,6 +1462,11 @@
         loadDarkModePreference();
         setInterval(updateNavDateTime, 60000);
 
+        // Set initial theme indicator for nav tabs
+        document.querySelectorAll('.nav-tab').forEach((tab, index) => {
+            if (index === 0) tab.classList.add('active');
+        });
+
         // غیرفعال کردن تمام تعاملات روی عکس‌ها
         document.addEventListener('contextmenu', (e) => {
             if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
@@ -1386,6 +1495,31 @@
                 return false;
             }
         }, true);
+
+        // Pull to Refresh for Mobile
+        let pullStartY = 0;
+        let isPulling = false;
+
+        document.addEventListener('touchstart', (e) => {
+            if (window.pageYOffset === 0) {
+                pullStartY = e.touches[0].clientY;
+                isPulling = true;
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (isPulling && window.pageYOffset === 0) {
+                const pullDistance = e.touches[0].clientY - pullStartY;
+                if (pullDistance > 80) {
+                    fetchData();
+                    isPulling = false;
+                }
+            }
+        });
+
+        document.addEventListener('touchend', () => {
+            isPulling = false;
+        });
 
         // Auto Refresh Every Minute
         setInterval(fetchData, 60000);
