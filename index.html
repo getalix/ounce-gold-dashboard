@@ -472,8 +472,12 @@
     </div>
 
     <script>
-        const API_KEY = 'FreeSV0E1LSgB9RDjuf0QorSLViX8pPG'; // Free API Key - استفاده برای تست
-        const API_URL = 'https://BrsApi.ir/Api/Market/Gold_Currency_Pro.php';
+        // ⚙️ تنظیمات Worker - جایگزین USERNAME و SUBDOMAIN با مقادیر خود
+        const WORKER_URL = 'https://ounce-gold-bot.getalix.workers.dev';
+        // اگر domain custom داری: https://api.yourdomain.com
+
+        // ✅ API Key محفوظ است - در Cloudflare Server ذخیره شده
+        const API_URL = `${WORKER_URL}/api/prices`;
 
         // State
         let allData = {
@@ -507,14 +511,15 @@
             return date.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
         }
 
-        // Fetch Data from API
+        // Fetch Data from API (via Cloudflare Worker Proxy)
         async function fetchData() {
             try {
                 document.getElementById('loadingState').style.display = 'block';
                 document.getElementById('priceGrid').innerHTML = '';
                 document.getElementById('emptyState').style.display = 'none';
 
-                const response = await fetch(`${API_URL}?key=${API_KEY}&section=gold,currency,cryptocurrency`);
+                // درخواست از Worker proxy
+                const response = await fetch(`${API_URL}?section=gold,currency,cryptocurrency`);
                 const data = await response.json();
 
                 if (data.successful) {
@@ -682,7 +687,8 @@
         async function fetchHistoryData(symbol) {
             try {
                 console.log(`📥 درخواست تاریخچه 24 ساعت برای: ${symbol}`);
-                const response = await fetch(`${API_URL}?key=${API_KEY}&history=1&symbol=${symbol}`);
+                // درخواست از Worker proxy
+                const response = await fetch(`${API_URL}?history=1&symbol=${symbol}`);
                 const data = await response.json();
 
                 if (data.successful) {
