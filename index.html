@@ -869,21 +869,26 @@
                 const response = await fetch(`${API_URL}?history=1&symbol=${symbol}`);
                 const data = await response.json();
 
-                if (data.successful) {
-                    console.log(`✅ داده‌های تاریخچه دریافت شد: ${data.history_24h ? data.history_24h.length : 0} رکورد`);
-                    if (data.history_24h && Array.isArray(data.history_24h)) {
+                console.log(`📊 پاسخ API:`, data);
+
+                if (data.successful && data.history_24h) {
+                    console.log(`✅ داده‌های تاریخچه دریافت شد: ${data.history_24h.length} رکورد`);
+                    if (Array.isArray(data.history_24h) && data.history_24h.length > 0) {
                         renderChart(data.history_24h, symbol, data.name);
                     } else {
-                        console.error('❌ داده‌های history_24h یافت نشد');
-                        document.getElementById('priceChart').parentElement.innerHTML = '<p style="text-align:center; color:#666;">⚠️ داده‌های تاریخچه در دسترس نیست</p>';
+                        console.error('❌ داده‌های history_24h خالی یا نامعتبر است');
+                        document.getElementById('priceChart').parentElement.innerHTML = '<p style="text-align:center; color:#666;">⚠️ داده‌های تاریخچه در دسترس نیست (خالی)</p>';
                     }
+                } else if (data.error || data.message_error) {
+                    console.error('❌ خطای API:', data.error || data.message_error);
+                    document.getElementById('priceChart').parentElement.innerHTML = `<p style="text-align:center; color:#666;">⚠️ ${data.error || data.message_error}</p>`;
                 } else {
-                    console.error('❌ درخواست ناموفق:', data.message_error);
-                    document.getElementById('priceChart').parentElement.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در بارگذاری داده‌های تاریخچه</p>';
+                    console.error('❌ پاسخ API نامعتبر:', data);
+                    document.getElementById('priceChart').parentElement.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا: داده تاریخچه دریافت نشد</p>';
                 }
             } catch (error) {
                 console.error('❌ خطا در بارگذاری تاریخچه:', error);
-                document.getElementById('priceChart').parentElement.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در اتصال به سرور</p>';
+                document.getElementById('priceChart').parentElement.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در اتصال به سرور: ' + error.message + '</p>';
             }
         }
 
