@@ -343,6 +343,10 @@
             display: flex;
         }
 
+        body.modal-open {
+            overflow: hidden;
+        }
+
         .modal-content {
             background: white;
             border-radius: 15px;
@@ -569,6 +573,16 @@
             border-top-color: #667eea;
             border-radius: 50%;
             animation: spin 1s linear infinite;
+        }
+
+        /* Chart Skeleton */
+        .chart-skeleton {
+            height: 400px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 8px;
+            margin-bottom: 20px;
         }
 
         /* ===== Scroll to Top Button ===== */
@@ -1013,14 +1027,12 @@
             document.getElementById('chartModalSymbol').textContent = symbol;
             document.getElementById('chartModal').classList.add('active');
 
-            // نمایش loading state
+            // اضافه کردن overflow hidden به body
+            document.body.classList.add('modal-open');
+
+            // نمایش skeleton loading برای نمودار
             const chartContainer = document.getElementById('priceChart').parentElement;
-            chartContainer.innerHTML = `
-                <div class="modal-loading">
-                    <div class="modal-spinner"></div>
-                    <p style="color: #999;">در حال بارگذاری نمودار...</p>
-                </div>
-            `;
+            chartContainer.innerHTML = '<div class="chart-skeleton"></div>';
 
             await fetchHistoryData(symbol);
         }
@@ -1028,6 +1040,8 @@
         // Close Chart Modal
         function closeChartModal() {
             document.getElementById('chartModal').classList.remove('active');
+            // حذف overflow hidden از body
+            document.body.classList.remove('modal-open');
         }
 
         // Fetch History Data (24-hour history)
@@ -1059,6 +1073,10 @@
 
         // Render Chart (24-hour history)
         function renderChart(historyData, symbol, name) {
+            // حذف skeleton loading و بازسازی canvas
+            const chartContainer = document.getElementById('priceChart').parentElement;
+            chartContainer.innerHTML = '<canvas id="priceChart"></canvas>';
+
             const ctx = document.getElementById('priceChart').getContext('2d');
 
             // ترتیب معکوس: از قدیمی‌تر به جدید‌تر
@@ -1187,6 +1205,13 @@
         // Close Modal on Outside Click
         document.getElementById('chartModal').addEventListener('click', (e) => {
             if (e.target.id === 'chartModal') {
+                closeChartModal();
+            }
+        });
+
+        // Close Modal on Escape Key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('chartModal').classList.contains('active')) {
                 closeChartModal();
             }
         });
