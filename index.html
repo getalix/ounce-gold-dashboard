@@ -354,7 +354,6 @@
             max-width: 800px;
             width: 95%;
             max-height: 90vh;
-            overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
 
@@ -1154,7 +1153,7 @@
                                     const changeIcon = originalData.change_percent > 0 ? '📈' : originalData.change_percent < 0 ? '📉' : '⚖️';
                                     const absChange = Math.abs(change);
                                     const sign = originalData.change_percent > 0 ? '+' : originalData.change_percent < 0 ? '-' : '';
-                                    return `قیمت: ${price}\nتغییر: ${sign}${absChange}% ${changeIcon}`;
+                                    return `قیمت: ${price}\nتغییر: ${changeIcon} ${sign}${absChange}%`;
                                 },
                                 title: function (context) {
                                     const idx = context[0].dataIndex;
