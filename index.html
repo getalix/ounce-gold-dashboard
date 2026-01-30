@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اُنس طلا - قیمت لحظه‌ای طلا، ارز و رمزارز</title>
+
+    <!-- Chart.js برای نمودارها -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* ===== Header ===== */
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #667eea;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* ===== Search & Filter ===== */
+        .controls {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            max-width: 400px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        /* ===== Loading Spinner ===== */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ===== Price Grid ===== */
+        .price-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .price-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .price-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .price-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            background: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .card-title {
+            flex: 1;
+        }
+
+        .card-title h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .card-title .symbol {
+            font-size: 13px;
+            color: #999;
+            font-weight: 500;
+        }
+
+        .card-price {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: baseline;
+            gap: 5px;
+        }
+
+        .card-price .unit {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .card-change {
+            display: flex;
+            gap: 15px;
+            padding: 10px 0;
+            border-top: 1px solid #f0f0f0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .change-item {
+            flex: 1;
+        }
+
+        .change-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .change-value {
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .change-value.up {
+            color: #10b981;
+        }
+
+        .change-value.down {
+            color: #ef4444;
+        }
+
+        .change-value.neutral {
+            color: #999;
+        }
+
+        .card-footer {
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .chart-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        .chart-btn:hover {
+            transform: scale(1.05);
+        }
+
+        /* ===== Modal ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 800px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            color: #333;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #999;
+            transition: all 0.3s;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 768px) {
+            .price-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .filter-tabs {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .modal-content {
+                padding: 20px;
+            }
+        }
+
+        /* ===== Empty State ===== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: white;
+        }
+
+        .empty-state-icon {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        /* ===== Update Time ===== */
+        .update-info {
+            background: white;
+            border-radius: 10px;
+            padding: 10px 15px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 20px;
+        }
+
+        .update-info .time {
+            color: #667eea;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🌍 اُنس طلا</h1>
+            <p>قیمت لحظه‌ای طلا، ارز و رمزارز</p>
+        </div>
+
+        <!-- Update Info -->
+        <div class="update-info">
+            ⏰ آخرین به‌روزرسانی: <span class="time" id="updateTime">--:--</span>
+            <span id="autoUpdateStatus"> | 🔄 به‌روزرسانی خودکار فعال است</span>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="controls">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="جستجو در میان قیمت‌ها...">
+            </div>
+            <div class="filter-tabs">
+                <button class="tab-btn active" data-filter="all">📊 همه</button>
+                <button class="tab-btn" data-filter="gold">🥇 طلا</button>
+                <button class="tab-btn" data-filter="currency">💱 ارز</button>
+                <button class="tab-btn" data-filter="crypto">₿ رمزارز</button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="loading" id="loadingState">
+            <div class="spinner"></div>
+            <p>در حال بارگذاری اطلاعات...</p>
+        </div>
+
+        <!-- Price Grid -->
+        <div class="price-grid" id="priceGrid"></div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-icon">🔍</div>
+            <h3>نتیجه‌ای یافت نشد</h3>
+            <p>جستجوی شما مطابق با هیچ‌کدام از نتایج نیست</p>
+        </div>
+    </div>
+
+    <!-- Chart Modal -->
+    <div class="modal" id="chartModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="chartModalTitle">نمودار قیمت</h2>
+                    <p id="chartModalSymbol" style="color: #999; font-size: 14px; margin-top: 5px;"></p>
+                </div>
+                <button class="close-btn" onclick="closeChartModal()">✕</button>
+            </div>
+            <div class="chart-container">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'FreeSV0E1LSgB9RDjuf0QorSLViX8pPG'; // Free API Key - استفاده برای تست
+        const API_URL = 'https://BrsApi.ir/Api/Market/Gold_Currency_Pro.php';
+
+        // State
+        let allData = {
+            gold: [],
+            currency: [],
+            cryptocurrency: []
+        };
+        let filteredData = [];
+        let currentFilter = 'all';
+        let chartInstance = null;
+
+        // Format Persian Digits
+        function toPersianDigits(str) {
+            const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+            const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+
+            let result = str.toString();
+            for (let i = 0; i < englishDigits.length; i++) {
+                result = result.replace(new RegExp(englishDigits[i], 'g'), persianDigits[i]);
+            }
+            return result;
+        }
+
+        // Format Price with Separators
+        function formatPrice(price) {
+            return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
+        // Format Time
+        function formatTime(date) {
+            return date.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Fetch Data from API
+        async function fetchData() {
+            try {
+                document.getElementById('loadingState').style.display = 'block';
+                document.getElementById('priceGrid').innerHTML = '';
+                document.getElementById('emptyState').style.display = 'none';
+
+                const response = await fetch(`${API_URL}?key=${API_KEY}&section=gold,currency,cryptocurrency`);
+                const data = await response.json();
+
+                if (data.successful) {
+                    // Process Gold Data
+                    if (data.gold) {
+                        allData.gold = [
+                            ...data.gold.ounce.map(item => ({ ...item, type: 'gold', category: 'ounce' })),
+                            ...data.gold.type.map(item => ({ ...item, type: 'gold', category: 'type' })),
+                            ...data.gold.coin.map(item => ({ ...item, type: 'gold', category: 'coin' })),
+                            ...data.gold.coin_parsian.map(item => ({ ...item, type: 'gold', category: 'coin_parsian' }))
+                        ];
+                    }
+
+                    // Process Currency Data
+                    if (data.currency && data.currency.free) {
+                        allData.currency = data.currency.free.map(item => ({ ...item, type: 'currency' }));
+                    }
+
+                    // Process Crypto Data
+                    if (data.cryptocurrency) {
+                        allData.cryptocurrency = data.cryptocurrency.map(item => ({ ...item, type: 'crypto' }));
+                    }
+
+                    // Update Filter and Render
+                    filterAndRender();
+
+                    // Update Time
+                    document.getElementById('updateTime').textContent = formatTime(new Date());
+                } else {
+                    showError('خطا در دریافت اطلاعات از API');
+                }
+            } catch (error) {
+                console.error('خطا:', error);
+                showError('خطا در اتصال به سرور');
+            } finally {
+                document.getElementById('loadingState').style.display = 'none';
+            }
+        }
+
+        // Filter and Render
+        function filterAndRender() {
+            let dataToRender = [];
+
+            if (currentFilter === 'all') {
+                dataToRender = [...allData.gold, ...allData.currency, ...allData.cryptocurrency];
+            } else if (currentFilter === 'gold') {
+                dataToRender = allData.gold;
+            } else if (currentFilter === 'currency') {
+                dataToRender = allData.currency;
+            } else if (currentFilter === 'crypto') {
+                dataToRender = allData.cryptocurrency;
+            }
+
+            // Apply Search Filter
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            if (searchTerm) {
+                dataToRender = dataToRender.filter(item => {
+                    const name = item.name ? item.name.toLowerCase() : '';
+                    const nameEn = item.name_en ? item.name_en.toLowerCase() : '';
+                    const symbol = item.symbol ? item.symbol.toLowerCase() : '';
+                    return name.includes(searchTerm) || nameEn.includes(searchTerm) || symbol.includes(searchTerm);
+                });
+            }
+
+            filteredData = dataToRender;
+
+            if (dataToRender.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                document.getElementById('priceGrid').innerHTML = '';
+            } else {
+                document.getElementById('emptyState').style.display = 'none';
+                renderPrices(dataToRender);
+            }
+        }
+
+        // Render Price Cards
+        function renderPrices(data) {
+            const grid = document.getElementById('priceGrid');
+            grid.innerHTML = '';
+
+            data.forEach(item => {
+                const card = createPriceCard(item);
+                grid.appendChild(card);
+            });
+        }
+
+        // Create Price Card Element
+        function createPriceCard(item) {
+            const card = document.createElement('div');
+            card.className = 'price-card';
+
+            const change = parseFloat(item.change_percent) || 0;
+            const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
+            const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
+
+            const icon = item.path_icon ? `${item.path_icon.split('.')[0]}` : '💰';
+
+            const price = formatPrice(Math.round(item.price));
+            const changeValue = formatPrice(Math.abs(item.change_value || 0));
+
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="card-icon">${icon}</div>
+                    <div class="card-title">
+                        <h3>${item.name}</h3>
+                        <span class="symbol">${item.symbol}</span>
+                    </div>
+                </div>
+                
+                <div class="card-price">
+                    ${toPersianDigits(price)}
+                    <span class="unit">${item.unit}</span>
+                </div>
+                
+                <div class="card-change">
+                    <div class="change-item">
+                        <div class="change-label">تغییر مقدار</div>
+                        <div class="change-value ${changeClass}">
+                            ${changeIcon}
+                            ${toPersianDigits(changeValue)}
+                        </div>
+                    </div>
+                    <div class="change-item">
+                        <div class="change-label">تغییر درصد</div>
+                        <div class="change-value ${changeClass}">
+                            ${changeIcon}
+                            ${toPersianDigits((change).toFixed(2))}%
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    📅 ${item.date} ⏰ ${item.time}
+                </div>
+                
+                <button class="chart-btn" onclick="openChartModal('${item.symbol}', '${item.name}')">
+                    📊 نمودار قیمت 24 ساعت
+                </button>
+            `;
+
+            return card;
+        }
+
+        // Show Error
+        function showError(message) {
+            const grid = document.getElementById('priceGrid');
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: white; padding: 40px;">❌ ${message}</div>`;
+        }
+
+        // Open Chart Modal
+        async function openChartModal(symbol, name) {
+            document.getElementById('chartModalTitle').textContent = `نمودار قیمت - ${name}`;
+            document.getElementById('chartModalSymbol').textContent = symbol;
+            document.getElementById('chartModal').classList.add('active');
+
+            await fetchHistoryData(symbol);
+        }
+
+        // Close Chart Modal
+        function closeChartModal() {
+            document.getElementById('chartModal').classList.remove('active');
+        }
+
+        // Fetch History Data (24-hour history)
+        async function fetchHistoryData(symbol) {
+            try {
+                console.log(`📥 درخواست تاریخچه 24 ساعت برای: ${symbol}`);
+                const response = await fetch(`${API_URL}?key=${API_KEY}&history=1&symbol=${symbol}`);
+                const data = await response.json();
+
+                if (data.successful) {
+                    console.log(`✅ داده‌های تاریخچه دریافت شد: ${data.history_24h ? data.history_24h.length : 0} رکورد`);
+                    if (data.history_24h && Array.isArray(data.history_24h)) {
+                        renderChart(data.history_24h, symbol, data.name);
+                    } else {
+                        console.error('❌ داده‌های history_24h یافت نشد');
+                        document.getElementById('priceChart').parentElement.innerHTML = '<p style="text-align:center; color:#666;">⚠️ داده‌های تاریخچه در دسترس نیست</p>';
+                    }
+                } else {
+                    console.error('❌ درخواست ناموفق:', data.message_error);
+                    document.getElementById('priceChart').parentElement.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در بارگذاری داده‌های تاریخچه</p>';
+                }
+            } catch (error) {
+                console.error('❌ خطا در بارگذاری تاریخچه:', error);
+                document.getElementById('priceChart').parentElement.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در اتصال به سرور</p>';
+            }
+        }
+
+        // Render Chart (24-hour history)
+        function renderChart(historyData, symbol, name) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            // ترتیب معکوس: از قدیمی‌تر به جدید‌تر
+            const sortedData = [...historyData].reverse();
+
+            // آماده‌سازی داده‌ها
+            const labels = sortedData.map(item => {
+                // نمایش تاریخ و ساعت فشرده
+                const time = item.time ? item.time.substring(0, 5) : '--';
+                return time;
+            });
+
+            const prices = sortedData.map(item => parseFloat(item.price));
+
+            // حذف نمودار قبلی
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            // ایجاد نمودار جدید
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `قیمت ${name} (${symbol})`,
+                        data: prices,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: 'white',
+                        pointBorderWidth: 1.5,
+                        pointHoverRadius: 5,
+                        hoverBorderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: { family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", size: 14, weight: 'bold' },
+                                padding: 15,
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.7)',
+                            titleFont: { size: 14 },
+                            bodyFont: { size: 13 },
+                            padding: 12,
+                            borderRadius: 8,
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                label: function (context) {
+                                    const idx = context.dataIndex;
+                                    const originalData = sortedData[idx];
+                                    const price = formatPrice(Math.round(originalData.price));
+                                    const change = originalData.change_percent.toFixed(2);
+                                    const changeIcon = originalData.change_percent > 0 ? '📈' : originalData.change_percent < 0 ? '📉' : '⚖️';
+                                    return `قیمت: ${price}\\nتغییر: ${changeIcon} ${change}%`;
+                                },
+                                title: function (context) {
+                                    const idx = context[0].dataIndex;
+                                    const originalData = sortedData[idx];
+                                    return `${originalData.date} - ${originalData.time}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'قیمت (تومان)'
+                            },
+                            ticks: {
+                                callback: function (value) {
+                                    return toPersianDigits(formatPrice(Math.round(value)));
+                                },
+                                font: { size: 11 }
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: { size: 11 }
+                            },
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Event Listeners
+        document.getElementById('searchInput').addEventListener('input', filterAndRender);
+
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                filterAndRender();
+            });
+        });
+
+        // Close Modal on Outside Click
+        document.getElementById('chartModal').addEventListener('click', (e) => {
+            if (e.target.id === 'chartModal') {
+                closeChartModal();
+            }
+        });
+
+        // Initial Load
+        fetchData();
+
+        // Auto Refresh Every Minute
+        setInterval(fetchData, 60000);
+    </script>
+</body>
+
+</html>
