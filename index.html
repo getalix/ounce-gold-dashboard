@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>اُنس طلا - قیمت لحظه‌ای طلا، ارز و رمزارز</title>
 
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="https://cdn.imgurl.ir/uploads/o361389_Picsart_26-01-30_17-44-50-500.png">
+    <link rel="icon" type="image/png" href="https://cdn.imgurl.ir/uploads/o361389_Picsart_26-01-30_17-44-50-500.png">
+
     <!-- Chart.js برای نمودارها -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
@@ -1153,7 +1157,8 @@
                                     const changeIcon = originalData.change_percent > 0 ? '📈' : originalData.change_percent < 0 ? '📉' : '⚖️';
                                     const absChange = Math.abs(change);
                                     const sign = originalData.change_percent > 0 ? '+' : originalData.change_percent < 0 ? '-' : '';
-                                    return `قیمت: ${price}\nتغییر: ${changeIcon} ${sign}${absChange}%`;
+                                    const changeDisplay = `\u202A${sign}${absChange}%\u202C`;
+                                    return `قیمت: ${price}\nتغییر: ${changeIcon} ${changeDisplay}`;
                                 },
                                 title: function (context) {
                                     const idx = context[0].dataIndex;
