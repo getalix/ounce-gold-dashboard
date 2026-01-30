@@ -36,109 +36,164 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
             min-height: 100vh;
-            padding: 10px;
+            padding: 0;
             color: #333;
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
+            transition: background 0.3s ease;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 20px 10px 140px;
+        }
+
+        /* ===== Bottom Snack Bar ===== */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            z-index: 995;
+            transition: all 0.3s ease;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-mode .bottom-nav {
+            background: #2d2d44;
+            border-top-color: #444;
+        }
+
+        .nav-header {
+            padding: 15px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        body.dark-mode .nav-header {
+            border-bottom-color: #444;
+        }
+
+        .nav-info {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .nav-bot-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        body.dark-mode .nav-bot-name {
+            color: #8b9fff;
+        }
+
+        .nav-datetime {
+            font-size: 12px;
+            color: #999;
+        }
+
+        body.dark-mode .nav-datetime {
+            color: #aaa;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            overflow-x: auto;
+            scroll-behavior: smooth;
+            gap: 0;
+            padding: 0;
+        }
+
+        .nav-tabs::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        .nav-tabs::-webkit-scrollbar-track {
+            background: #f0f0f0;
+        }
+
+        body.dark-mode .nav-tabs::-webkit-scrollbar-track {
+            background: #333;
+        }
+
+        .nav-tabs::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 3px;
+        }
+
+        .nav-tab {
+            flex: 1;
+            min-width: 25%;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: white;
+            color: #999;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body.dark-mode .nav-tab {
+            background: #2d2d44;
+            color: #aaa;
+        }
+
+        .nav-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        body.dark-mode .nav-tab.active {
+            color: #8b9fff;
+            border-bottom-color: #8b9fff;
+        }
+
+        .nav-tab:hover {
+            background: #f9f9f9;
+        }
+
+        body.dark-mode .nav-tab:hover {
+            background: #353550;
         }
 
         /* ===== Header ===== */
         .header {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 28px;
-            color: #667eea;
-            margin-bottom: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .header p {
-            color: #666;
-            font-size: 14px;
+            display: none;
         }
 
         /* ===== Search & Filter ===== */
         .controls {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
-        .search-box {
-            flex: 1;
-            min-width: 250px;
-            max-width: 400px;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .search-box input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
-        }
-
-        .filter-tabs {
-            display: flex;
-            gap: 10px;
-        }
-
-        .tab-btn {
-            padding: 10px 20px;
-            border: 2px solid #e0e0e0;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .tab-btn:hover {
-            border-color: #667eea;
-            color: #667eea;
-        }
-
-        .tab-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
+            display: none;
         }
 
         /* ===== Loading Spinner ===== */
@@ -183,6 +238,11 @@
             position: relative;
             overflow: hidden;
             -webkit-tap-highlight-color: transparent;
+        }
+
+        body.dark-mode .price-card {
+            background: #2d2d44;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
 
         .price-card:hover {
@@ -248,10 +308,18 @@
             margin-bottom: 5px;
         }
 
+        body.dark-mode .card-title h3 {
+            color: #e0e0e0;
+        }
+
         .card-title .symbol {
             font-size: 13px;
             color: #999;
             font-weight: 500;
+        }
+
+        body.dark-mode .card-title .symbol {
+            color: #aaa;
         }
 
         .card-price {
@@ -313,6 +381,11 @@
             margin-top: 10px;
             padding-top: 10px;
             border-top: 1px solid #f0f0f0;
+        }
+
+        body.dark-mode .card-footer {
+            color: #aaa;
+            border-top-color: #444;
         }
 
         .chart-btn {
@@ -432,6 +505,10 @@
             color: white;
         }
 
+        body.dark-mode .empty-state {
+            color: #e0e0e0;
+        }
+
         .empty-state-icon {
             font-size: 60px;
             margin-bottom: 20px;
@@ -449,18 +526,7 @@
 
         /* ===== Update Time ===== */
         .update-info {
-            background: white;
-            border-radius: 10px;
-            padding: 10px 15px;
-            text-align: center;
-            font-size: 12px;
-            color: #999;
-            margin-bottom: 20px;
-        }
-
-        .update-info .time {
-            color: #667eea;
-            font-weight: bold;
+            display: none;
         }
 
         /* ===== Skeleton Loading ===== */
@@ -472,6 +538,11 @@
             position: relative;
             overflow: hidden;
             -webkit-tap-highlight-color: transparent;
+        }
+
+        body.dark-mode .skeleton-card {
+            background: #2d2d44;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
 
         .skeleton-card::before {
@@ -718,7 +789,22 @@
         </svg>
     </button>
 
-    <!-- Chart Modal -->
+    <!-- Bottom Navigation Bar -->
+    <div class="bottom-nav" id="bottomNav">
+        <div class="nav-header">
+            <div class="nav-info">
+                <div class="nav-bot-name">@OunceGoldBot</div>
+                <div class="nav-datetime"><span id="navDate">--/--/--</span> <span id="navTime">--:--</span></div>
+            </div>
+            <button class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()">🌙</button>
+        </div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('all')">📊 همه</button>
+            <button class="nav-tab" onclick="switchTab('gold')">🥇 طلا</button>
+            <button class="nav-tab" onclick="switchTab('currency')">💱 ارز</button>
+            <button class="nav-tab" onclick="switchTab('crypto')">₿ رمز ارز</button>
+        </div>
+    </div>
     <div class="modal" id="chartModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -787,6 +873,43 @@
         // Format Time
         function formatTime(date) {
             return date.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Format Date (Jalali)
+        function formatDateJalali(date) {
+            return date.toLocaleDateString('fa-IR');
+        }
+
+        // Update bottom nav datetime
+        function updateNavDateTime() {
+            const now = new Date();
+            document.getElementById('navDate').textContent = formatDateJalali(now);
+            document.getElementById('navTime').textContent = formatTime(now);
+        }
+
+        // Toggle Dark Mode
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDark = document.body.classList.contains('dark-mode');
+            document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
+            localStorage.setItem('darkMode', isDark ? 'true' : 'false');
+        }
+
+        // Load dark mode preference
+        function loadDarkModePreference() {
+            const isDark = localStorage.getItem('darkMode') === 'true';
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeToggle').textContent = '☀️';
+            }
+        }
+
+        // Switch tab
+        function switchTab(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            filterAndRender();
         }
 
         // Fetch Data from API (via Cloudflare Worker Proxy)
@@ -1231,6 +1354,9 @@
 
         // Initial Load
         fetchData();
+        updateNavDateTime();
+        loadDarkModePreference();
+        setInterval(updateNavDateTime, 60000);
 
         // غیرفعال کردن تمام تعاملات روی عکس‌ها
         document.addEventListener('contextmenu', (e) => {
