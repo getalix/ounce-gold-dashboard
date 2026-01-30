@@ -1048,6 +1048,8 @@
         async function fetchHistoryData(symbol) {
             try {
                 console.log(`📥 درخواست تاریخچه 24 ساعت برای: ${symbol}`);
+                const chartContainer = document.querySelector('.chart-container');
+
                 // درخواست از Worker proxy
                 const response = await fetch(`${API_URL}?history=1&symbol=${symbol}`);
                 const data = await response.json();
@@ -1060,24 +1062,24 @@
                     renderChart(data.history_24h, symbol, data.name);
                 } else if (data.error || data.message_error) {
                     console.error('❌ خطای API:', data.error || data.message_error);
-                    document.getElementById('priceChart').parentElement.innerHTML = `<p style="text-align:center; color:#666;">⚠️ ${data.error || data.message_error}</p>`;
+                    chartContainer.innerHTML = `<p style="text-align:center; color:#666;">⚠️ ${data.error || data.message_error}</p>`;
                 } else {
                     console.error('❌ داده تاریخچه دریافت نشد یا خالی است:', data);
-                    document.getElementById('priceChart').parentElement.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا: داده تاریخچه در دسترس نیست</p>';
+                    chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا: داده تاریخچه در دسترس نیست</p>';
                 }
             } catch (error) {
                 console.error('❌ خطا در بارگذاری تاریخچه:', error);
-                document.getElementById('priceChart').parentElement.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در اتصال به سرور: ' + error.message + '</p>';
+                const chartContainer = document.querySelector('.chart-container');
+                chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در اتصال به سرور: ' + error.message + '</p>';
             }
         }
 
         // Render Chart (24-hour history)
         function renderChart(historyData, symbol, name) {
-            // حذف skeleton loading و بازسازی canvas
-            const chartContainer = document.getElementById('priceChart').parentElement;
-            chartContainer.innerHTML = '<canvas id="priceChart"></canvas>';
+            const chartContainer = document.querySelector('.chart-container');
 
-            const ctx = document.getElementById('priceChart').getContext('2d');
+            // حذف skeleton loading و بازسازی canvas
+            chartContainer.innerHTML = '<canvas id="priceChart"></canvas>';
 
             // ترتیب معکوس: از قدیمی‌تر به جدید‌تر
             const sortedData = [...historyData].reverse();
