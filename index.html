@@ -1081,6 +1081,8 @@
             // حذف skeleton loading و بازسازی canvas
             chartContainer.innerHTML = '<canvas id="priceChart"></canvas>';
 
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
             // ترتیب معکوس: از قدیمی‌تر به جدید‌تر
             const sortedData = [...historyData].reverse();
 
