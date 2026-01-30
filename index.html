@@ -193,6 +193,8 @@
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
+            cursor: default;
+            pointer-events: none;
         }
 
         .card-icon img {
@@ -202,6 +204,8 @@
             -ms-user-select: none;
             -webkit-user-drag: none;
             pointer-events: none;
+            cursor: default;
+            display: block;
         }
 
         .card-title {
@@ -671,7 +675,7 @@
                 </div>
                 
                 <div class="card-price">
-                    ${toPersianDigits(price)}
+                    ${price}
                     <span class="unit">${item.unit}</span>
                 </div>
                 
@@ -680,14 +684,14 @@
                         <div class="change-label">تغییر مقدار</div>
                         <div class="change-value ${changeClass}">
                             ${changeIcon}
-                            ${toPersianDigits(changeValue)}
+                            ${changeValue}
                         </div>
                     </div>
                     <div class="change-item">
                         <div class="change-label">تغییر درصد</div>
                         <div class="change-value ${changeClass}">
                             ${changeIcon}
-                            <span>${toPersianDigits(Math.abs(change).toFixed(2))}%</span>
+                            <span>${Math.abs(change).toFixed(2)}%</span>
                         </div>
                     </div>
                 </div>
@@ -820,7 +824,7 @@
                                 label: function (context) {
                                     const idx = context.dataIndex;
                                     const originalData = sortedData[idx];
-                                    const price = formatPrice(Math.round(originalData.price));
+                                    const price = formatPrice(originalData.price);
                                     const change = originalData.change_percent.toFixed(2);
                                     const changeIcon = originalData.change_percent > 0 ? '📈 +' : originalData.change_percent < 0 ? '📉 -' : '⚖️ ';
                                     const absChange = Math.abs(change);
@@ -843,7 +847,7 @@
                             },
                             ticks: {
                                 callback: function (value) {
-                                    return toPersianDigits(formatPrice(Math.round(value)));
+                                    return formatPrice(value);
                                 },
                                 font: { size: 11 }
                             },
@@ -886,7 +890,7 @@
         // Initial Load
         fetchData();
 
-        // غیرفعال کردن right-click روی عکس‌ها
+        // غیرفعال کردن تمام تعاملات روی عکس‌ها
         document.addEventListener('contextmenu', (e) => {
             if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
                 e.preventDefault();
@@ -894,8 +898,21 @@
             }
         }, true);
 
-        // غیرفعال کردن drag برای عکس‌ها
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                e.preventDefault();
+                return false;
+            }
+        }, true);
+
         document.addEventListener('dragstart', (e) => {
+            if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                e.preventDefault();
+                return false;
+            }
+        }, true);
+
+        document.addEventListener('dragover', (e) => {
             if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
                 e.preventDefault();
                 return false;
