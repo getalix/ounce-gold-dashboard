@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
     <title>اُنس طلا - قیمت لحظه‌ای طلا، ارز و رمزارز</title>
 
     <!-- Favicon -->
@@ -1117,14 +1118,6 @@
             const isDark = document.body.classList.contains('dark-mode');
             document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
             localStorage.setItem('darkMode', isDark ? 'true' : 'false');
-
-            // اگر نمودار فعلی باز است، به‌روزرسانی رنگ حاشیه نقطه
-            if (chartInstance && document.getElementById('chartModal').classList.contains('active')) {
-                const isLightMode = document.body.classList.contains('light-mode');
-                const newPointBorderColor = isLightMode ? 'transparent' : 'white';
-                chartInstance.data.datasets[0].pointBorderColor = newPointBorderColor;
-                chartInstance.update();
-            }
         }
 
         // Load dark mode preference
@@ -1519,10 +1512,6 @@
                 chartInstance.destroy();
             }
 
-            // تعیین رنگ حاشیه نقطه بر اساس light/dark mode
-            const isLightMode = document.body.classList.contains('light-mode');
-            const pointBorderColor = isLightMode ? 'transparent' : 'white';
-
             // ایجاد نمودار جدید
             chartInstance = new Chart(ctx, {
                 type: 'line',
@@ -1538,7 +1527,7 @@
                         tension: 0.4,
                         pointRadius: 3,
                         pointBackgroundColor: '#667eea',
-                        pointBorderColor: pointBorderColor,
+                        pointBorderColor: 'white',
                         pointBorderWidth: 1.5,
                         pointHoverRadius: 5,
                         hoverBorderWidth: 3
