@@ -303,7 +303,13 @@
             background: transparent;
             backdrop-filter: none;
             z-index: 992;
-            transition: none;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .search-container.hidden {
+            transform: translateY(200px);
+            opacity: 0;
+            pointer-events: none;
         }
 
         body.light-mode .search-container {
@@ -857,16 +863,29 @@
             right: 0;
             z-index: 998;
             pointer-events: none;
+            height: 0;
+            overflow: hidden;
+            transition: none;
+        }
+
+        .pull-to-refresh-container.refreshing {
+            height: 120px;
+            transition: height 0.3s ease;
         }
 
         .pull-to-refresh {
             position: absolute;
-            top: 70px;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 120px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 10px;
+            background: linear-gradient(180deg, rgba(102, 126, 234, 0.1) 0%, rgba(102, 126, 234, 0.05) 100%);
+            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
             opacity: 0;
             transition: opacity 0.3s ease;
             pointer-events: none;
@@ -876,18 +895,73 @@
             opacity: 1;
         }
 
+        body.light-mode .pull-to-refresh {
+            background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.02) 100%);
+            border-bottom-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .pull-refresh-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        body.dark-mode .pull-refresh-text {
+            color: white;
+        }
+
+        body.light-mode .pull-refresh-text {
+            color: #000;
+        }
+
         .pull-to-refresh-spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(102, 126, 234, 0.3);
-            border-top-color: #667eea;
+            width: 50px;
+            height: 50px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .pull-to-refresh-spinner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             border-radius: 50%;
+            border: 4px solid transparent;
+            border-top-color: #667eea;
+            border-right-color: #667eea;
             animation: spin-fast 0.8s linear infinite;
         }
 
-        body.dark-mode .pull-to-refresh-spinner {
-            border-color: rgba(125, 211, 255, 0.3);
-            border-top-color: #7dd3ff;
+        .pull-to-refresh-spinner::after {
+            content: '';
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: calc(100% - 16px);
+            height: calc(100% - 16px);
+            border-radius: 50%;
+            border: 3px solid rgba(102, 126, 234, 0.2);
+        }
+
+        body.dark-mode .pull-to-refresh-spinner::before {
+            border-top-color: white;
+            border-right-color: white;
+        }
+
+        body.dark-mode .pull-to-refresh-spinner::after {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        body.light-mode .pull-to-refresh-spinner::before {
+            border-top-color: #000;
+            border-right-color: #000;
+        }
+
+        body.light-mode .pull-to-refresh-spinner::after {
+            border-color: rgba(0, 0, 0, 0.2);
         }
 
         @keyframes spin-fast {
@@ -1003,14 +1077,367 @@
             border-radius: 8px;
             margin-bottom: 20px;
         }
+
+        /* ===== Chart Controls ===== */
+        /* ===== Chart Modal Toolbar ===== */
+        .chart-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            align-items: flex-end;
+        }
+
+        body.dark-mode .chart-toolbar {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .toolbar-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 150px;
+        }
+
+        .toolbar-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        body.dark-mode .toolbar-group label {
+            color: #e0e0e0;
+        }
+
+        /* ===== Dropdown Styles ===== */
+        .dropdown-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .dropdown-toggle {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 6px;
+            background: white;
+            color: #333;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body.dark-mode .dropdown-toggle {
+            background: #2d2d2d;
+            color: #e0e0e0;
+            border-color: rgba(125, 211, 255, 0.3);
+        }
+
+        .dropdown-toggle:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        body.dark-mode .dropdown-toggle:hover {
+            background: #333;
+        }
+
+        .dropdown-arrow {
+            font-size: 10px;
+            margin-right: 5px;
+            transition: transform 0.3s;
+        }
+
+        .dropdown-toggle.active .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            z-index: 1001;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            margin-top: 5px;
+        }
+
+        body.dark-mode .dropdown-menu {
+            background: #2d2d2d;
+            border-color: #444;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+
+        .dropdown-menu.active {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .dropdown-menu::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .dropdown-menu::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .dropdown-menu::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.4);
+            border-radius: 3px;
+        }
+
+        .dropdown-category {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        body.dark-mode .dropdown-category {
+            border-bottom-color: #444;
+        }
+
+        .dropdown-category:last-child {
+            border-bottom: none;
+        }
+
+        .category-title {
+            padding: 8px 15px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        body.dark-mode .category-title {
+            color: #aaa;
+        }
+
+        .dropdown-item {
+            width: 100%;
+            padding: 12px 15px;
+            border: none;
+            background: transparent;
+            color: #333;
+            font-size: 13px;
+            text-align: right;
+            cursor: pointer;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body.dark-mode .dropdown-item {
+            color: #e0e0e0;
+        }
+
+        .dropdown-item:hover {
+            background: #f0f4ff;
+        }
+
+        body.dark-mode .dropdown-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .dropdown-item.active {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* ===== Zoom Controls ===== */
+        .zoom-controls {
+            min-width: auto;
+        }
+
+        .zoom-buttons {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .zoom-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 4px;
+            background: white;
+            color: #333;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body.dark-mode .zoom-btn {
+            background: #2d2d2d;
+            color: #e0e0e0;
+            border-color: rgba(125, 211, 255, 0.3);
+        }
+
+        .zoom-btn:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+
+        body.dark-mode .zoom-btn:hover {
+            background: #333;
+        }
+
+        .zoom-reset {
+            min-width: 50px;
+            width: auto;
+            padding: 0 8px;
+            font-size: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border-color: transparent;
+        }
+
+        .zoom-reset:hover {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: transparent;
+        }
+
+        /* ===== Responsive Chart Toolbar ===== */
+        @media (max-width: 768px) {
+            .chart-toolbar {
+                gap: 10px;
+            }
+
+            .toolbar-group {
+                min-width: 120px;
+            }
+
+            .dropdown-menu.active {
+                max-height: 400px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chart-toolbar {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .toolbar-group {
+                min-width: 100%;
+            }
+
+            .zoom-controls {
+                min-width: 100%;
+            }
+
+            .zoom-buttons {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .zoom-btn {
+                flex: 1;
+            }
+        }
+
+        /* ===== Old CSS (For compatibility) ===== */
+        .chart-controls {
+            display: none;
+        }
+
+        .chart-control-group {
+            display: none;
+        }
+
+        .chart-type-buttons {
+            display: none;
+        }
+
+        .timeframe-buttons {
+            display: none;
+        }
+
+        /* Chart Crosshair */
+        .chart-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chart-tooltip.visible {
+            display: block;
+        }
+
+        .chart-tooltip-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin: 4px 0;
+        }
+
+        .chart-tooltip-label {
+            color: #aaa;
+        }
+
+        .chart-tooltip-value {
+            color: white;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .chart-type-buttons {
+                max-height: 80px;
+                gap: 6px;
+            }
+
+            .chart-type-btn {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+
+            .timeframe-buttons {
+                max-height: 120px;
+            }
+
+            .timeframe-btn {
+                padding: 5px 10px;
+                font-size: 11px;
+                min-width: 36px;
+            }
+        }
     </style>
 </head>
 
 <body>
     <!-- Pull to Refresh Indicator -->
-    <div class="pull-to-refresh-container">
+    <div class="pull-to-refresh-container" id="pullToRefreshContainer">
         <div class="pull-to-refresh" id="pullToRefreshIndicator">
             <div class="pull-to-refresh-spinner"></div>
+            <div class="pull-refresh-text">در حال به‌روزرسانی...</div>
         </div>
     </div>
 
@@ -1079,358 +1506,557 @@
                 </div>
                 <button class="close-btn" onclick="closeChartModal()">✕</button>
             </div>
-            <div class="chart-container">
-                <canvas id="priceChart"></canvas>
-            </div>
-        </div>
-    </div>
 
-    <script>
-        // ⚙️ Cloudflare Worker URL - API Proxy
-        const WORKER_URL = 'https://ons-gold-tg.panytb.workers.dev';
-        // ✅ API Key محفوظ است - در Cloudflare Server ذخیره شده
-        const API_URL = `${WORKER_URL}/api/prices`;
+            <!-- Chart Controls Toolbar -->
+            <div class="chart-toolbar">
+                <!-- Chart Type Dropdown -->
+                <div class="toolbar-group">
+                    <label>📊 نوع نمودار:</label>
+                    <div class="dropdown-wrapper">
+                        <button class="dropdown-toggle" id="chartTypeToggle" onclick="toggleChartTypeDropdown()">
+                            <span id="chartTypeLabel">خط</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="dropdown-menu" id="chartTypeDropdown">
+                            <!-- Candle Charts -->
+                            <div class="dropdown-category">
+                                <div class="category-title">🕯️ شمع</div>
+                                <button class="dropdown-item" data-type="candles"
+                                    onclick="selectChartType('candles')">شمع</button>
+                                <button class="dropdown-item" data-type="hollow-candles"
+                                    onclick="selectChartType('hollow-candles')">شمع توخالی</button>
+                            </div>
+                            <!-- Line Charts -->
+                            <div class="dropdown-category">
+                                <div class="category-title">📈 خطی</div>
+                                <button class="dropdown-item active" data-type="line"
+                                    onclick="selectChartType('line')">خط</button>
+                                <button class="dropdown-item" data-type="line-markers"
+                                    onclick="selectChartType('line-markers')">خط با نشانگر</button>
+                                <button class="dropdown-item" data-type="step-line"
+                                    onclick="selectChartType('step-line')">خط پلکانی</button>
+                            </div>
+                            <!-- Area Charts -->
+                            <div class="dropdown-category">
+                                <div class="category-title">🌊 ناحیه</div>
+                                <button class="dropdown-item" data-type="area"
+                                    onclick="selectChartType('area')">ناحیه</button>
+                            </div>
+                            <!-- Bar Charts -->
+                            <div class="dropdown-category">
+                                <div class="category-title">📊 میله‌ها و ستون‌ها</div>
+                                <button class="dropdown-item" data-type="bars"
+                                    onclick="selectChartType('bars')">میله‌ها</button>
+                                <button class="dropdown-item" data-type="columns"
+                                    onclick="selectChartType('columns')">ستون‌ها</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-        // State
-        let allData = {
-            gold: [],
-            currency: [],
-            cryptocurrency: []
-        };
-        let filteredData = [];
-        let currentFilter = 'all';
-        let chartInstance = null;
+                <!-- Timeframe Dropdown -->
+                <div class="toolbar-group">
+                    <label>⏱️ بازه زمانی:</label>
+                    <div class="dropdown-wrapper">
+                        <button class="dropdown-toggle" id="timeframeToggle" onclick="toggleTimeframeDropdown()">
+                            <span id="timeframeLabel">5د</span>
+                            <span class="dropdown-arrow">▼</span>
+                        </button>
+                        <div class="dropdown-menu" id="timeframeDropdown">
+                            <!-- Minutes -->
+                            <div class="dropdown-category">
+                                <div class="category-title">دقیقه</div>
+                                <button class="dropdown-item" data-timeframe="1m" onclick="selectTimeframe('1m')">1
+                                    دقیقه</button>
+                                <button class="dropdown-item" data-timeframe="3m" onclick="selectTimeframe('3m')">3
+                                    دقیقه</button>
+                                <button class="dropdown-item" data-timeframe="5m" onclick="selectTimeframe('5m')">5
+                                    دقیقه</button>
+                                <button class="dropdown-item" data-timeframe="15m" onclick="selectTimeframe('15m')">15
+                                    دقیقه</button>
+                                <button class="dropdown-item" data-timeframe="30m" onclick="selectTimeframe('30m')">30
+                                    دقیقه</button>
+                                <button class="dropdown-item active" data-timeframe="45m"
+                                    onclick="selectTimeframe('45m')">45
+                                    دقیقه</button>
+                            </div>
+                            <!-- Hours -->
+                            <div class="dropdown-category">
+                                <div class="category-title">ساعت</div>
+                                <button class="dropdown-item" data-timeframe="1h" onclick="selectTimeframe('1h')">1
+                                    ساعت</button>
+                                <button class="dropdown-item" data-timeframe="2h" onclick="selectTimeframe('2h')">2
+                                    ساعت</button>
+                                <button class="dropdown-item" data-timeframe="3h" onclick="selectTimeframe('3h')">3
+                                    ساعت</button>
+                                <button class="dropdown-item" data-timeframe="4h" onclick="selectTimeframe('4h')">4
+                                    ساعت</button>
+                            </div>
+                            <!-- Days -->
+                            <div class="dropdown-category">
+                                <div class="category-title">روز</div>
+                                <button class="dropdown-item" data-timeframe="1d" onclick="selectTimeframe('1d')">1
+                                    روز</button>
+                                <button class="dropdown-item" data-timeframe="1w" onclick="selectTimeframe('1w')">1
+                                    هفته</button>
+                                <button class="dropdown-item" data-timeframe="1mo" onclick="selectTimeframe('1mo')">1
+                                    ماه</button>
+                                <button class="dropdown-item" data-timeframe="3mo" onclick="selectTimeframe('3mo')">3
+                                    ماه</button>
+                                <button class="dropdown-item" data-timeframe="6mo" onclick="selectTimeframe('6mo')">6
+                                    ماه</button>
+                                <button class="dropdown-item" data-timeframe="1y" onclick="selectTimeframe('1y')">1
+                                    سال</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-        // Format Persian Digits
-        function toPersianDigits(str) {
-            const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-            const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                <!-- Zoom Controls -->
+                <div class="toolbar-group zoom-controls">
+                    <label>🔍 بزرگ‌نمایی:</label>
+                    <div class="zoom-buttons">
+                        <button class="zoom-btn" onclick="zoomChart(0.8)" title="کوچک‌تر">−</button>
+                        <button class="zoom-btn zoom-reset" onclick="resetZoom()" id="zoomLevel">100%</button>
+                        <button class="zoom-btn" onclick="zoomChart(1.2)" title="بزرگ‌تر">+</button>
+                        <script>
+                            // ⚙️ Cloudflare Worker URL - API Proxy
+                            const WORKER_URL = 'https://ons-gold-tg.panytb.workers.dev';
+                            // ✅ API Key محفوظ است - در Cloudflare Server ذخیره شده
+                            const API_URL = `${WORKER_URL}/api/prices`;
 
-            let result = str.toString();
-            for (let i = 0; i < englishDigits.length; i++) {
-                result = result.replace(new RegExp(englishDigits[i], 'g'), persianDigits[i]);
-            }
-            return result;
-        }
+                            // Detect if running in Telegram Mini App
+                            const isTelegramMiniApp = () => {
+                                return typeof window !== 'undefined' &&
+                                    (window.TelegramWebApp ||
+                                        window.Telegram ||
+                                        navigator.userAgent.includes('TelegramBot') ||
+                                        navigator.userAgent.includes('Telegram'));
+                            };
 
-        // Format Price with Separators (برای ارزهای اعشاری و معمولی)
-        function formatPrice(price) {
-            // اگر قیمت string و با 0. شروع می‌شود، دقیقاً همان را نمایش بده
-            if (typeof price === 'string' && price.startsWith('0.')) {
-                return price;
-            }
+                            // State
+                            let allData = {
+                                gold: [],
+                                currency: [],
+                                cryptocurrency: []
+                            };
+                            let filteredData = [];
+                            let currentFilter = 'all';
+                            let chartInstance = null;
 
-            price = parseFloat(price);
+                            // Chart state
+                            let chartState = {
+                                currentSymbol: '',
+                                currentName: '',
+                                currentChartType: 'line',
+                                currentTimeframe: '5m',
+                                historicalData: [],
+                                crosshairData: null
+                            };
 
-            // اگر قیمت خیلی پایین باشد (مثل رمزارزهایی که < 1)
-            if (price < 1) {
-                // نمایش 6 رقم اعشار برای ارزهای بسیار پایین
-                return price.toFixed(6).replace(/\.?0+$/, '');
-            } else if (price < 100) {
-                // نمایش 2 رقم اعشار برای ارزهای کمتر از 100
-                return price.toFixed(2).replace(/\.?0+$/, '');
-            } else {
-                // نمایش بدون اعشار + separator برای ارزهای بزرگ
-                return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-            }
-        }
+                            // Format Persian Digits
+                            function toPersianDigits(str) {
+                                const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+                                const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
 
-        // Load Icon with Retry Logic - بهتر شده
-        function loadIconWithFallback(iconPath, symbol) {
-            if (!iconPath) {
-                return createSymbolFallback(symbol);
-            }
+                                let result = str.toString();
+                                for (let i = 0; i < englishDigits.length; i++) {
+                                    result = result.replace(new RegExp(englishDigits[i], 'g'), persianDigits[i]);
+                                }
+                                return result;
+                            }
 
-            const uniqueId = `icon-${symbol.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                            // Format Price with Separators (برای ارزهای اعشاری و معمولی)
+                            function formatPrice(price) {
+                                // اگر قیمت string و با 0. شروع می‌شود، دقیقاً همان را نمایش بده
+                                if (typeof price === 'string' && price.startsWith('0.')) {
+                                    return price;
+                                }
 
-            return `<div id="${uniqueId}" class="icon-container" data-symbol="${symbol}" data-path="${iconPath}" style="width: 50px; height: 50px; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: transparent;">
-                <img src="https://brsapi.ir/Api/Market/GCC/Icon/256x256/${iconPath}" 
+                                price = parseFloat(price);
+
+                                // اگر قیمت خیلی پایین باشد (مثل رمزارزهایی که < 1)
+                                if (price < 1) {
+                                    // نمایش 6 رقم اعشار برای ارزهای بسیار پایین
+                                    return price.toFixed(6).replace(/\.?0+$/, '');
+                                } else if (price < 100) {
+                                    // نمایش 2 رقم اعشار برای ارزهای کمتر از 100
+                                    return price.toFixed(2).replace(/\.?0+$/, '');
+                                } else {
+                                    // نمایش بدون اعشار + separator برای ارزهای بزرگ
+                                    return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                                }
+                            }
+
+                            // Load Icon with Retry Logic - بهتر شده
+                            function loadIconWithFallback(iconPath, symbol) {
+                                if (!iconPath) {
+                                    return createSymbolFallback(symbol);
+                                }
+
+                                const uniqueId = `icon-${symbol.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                                const isInMiniApp = isTelegramMiniApp();
+
+                                // اگر در Mini App هستیم، بلافاصله fallback استفاده کنیم
+                                if (isInMiniApp) {
+                                    console.warn(`⚠️ Mini App detected - using fallback for ${symbol}`);
+                                    return createSymbolFallback(symbol);
+                                }
+
+                                // آدرس‌های متعدد برای تلاش مجدد
+                                const iconUrls = [
+                                    `https://brsapi.ir/Api/Market/GCC/Icon/256x256/${iconPath}`,
+                                    `https://brsapi.ir/Api/Market/GCC/Icon/128x128/${iconPath}`,
+                                    `https://brsapi.ir/Api/Market/GCC/Icon/64x64/${iconPath}`
+                                ];
+
+                                // استفاده از data URL یا base64 اگر امکان پذیر باشد
+                                const encodedPath = encodeURIComponent(iconPath);
+                                const corsProxyUrl = `https://brsapi.ir/Api/Market/GCC/Icon/256x256/${encodedPath}`;
+
+                                return `<div id="${uniqueId}" class="icon-container" data-symbol="${symbol}" data-path="${iconPath}" style="width: 50px; height: 50px; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: transparent;">
+                <img src="${corsProxyUrl}" 
                      alt="${symbol}" 
                      class="card-icon-img"
                      data-symbol="${symbol}"
                      data-icon-path="${iconPath}"
+                     data-urls='${JSON.stringify(iconUrls)}'
                      style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none; display: block;"
-                     draggable="false">
+                     draggable="false"
+                     crossorigin="anonymous"
+                     loading="lazy">
             </div>`;
-        }
+                            }
 
-        // Create Symbol Fallback
-        function createSymbolFallback(symbol) {
-            return `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word; overflow: hidden;">${symbol.substring(0, 6)}</div>`;
-        }
+                            // Create Symbol Fallback with emoji
+                            function createSymbolFallback(symbol) {
+                                // Symbol‌های رایج و آیکون‌های آن
+                                const symbolEmojis = {
+                                    'طلا': '🥇',
+                                    'نقره': '🥈',
+                                    'مس': '🔴',
+                                    'USDT': '💵',
+                                    'USD': '💵',
+                                    'EUR': '€',
+                                    'GBP': '£',
+                                    'JPY': '¥',
+                                    'BTC': '₿',
+                                    'ETH': 'Ξ',
+                                    'ADA': '₳',
+                                    'XRP': '✕',
+                                    'DOGE': '🐕',
+                                    'SOL': '◎',
+                                    'BNB': '🔶',
+                                };
 
-        // Setup Image Error Handlers
-        function setupImageErrorHandlers() {
-            const images = document.querySelectorAll('.card-icon-img');
-            images.forEach(img => {
-                if (img.__handlersSetup) return; // تا دوبار اجرا نشود
-                img.__handlersSetup = true;
+                                const emoji = symbolEmojis[symbol] || (symbol.length > 0 ? symbol.charAt(0) : '💰');
+                                const isEmoji = emoji.match(/\p{Emoji}/u);
 
-                const symbol = img.getAttribute('data-symbol');
-                const iconPath = img.getAttribute('data-icon-path');
-                const wrapper = img.parentElement;
+                                if (isEmoji) {
+                                    return `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 28px; user-select: none; pointer-events: none;">${emoji}</div>`;
+                                } else {
+                                    return `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word; overflow: hidden;">${symbol.substring(0, 6)}</div>`;
+                                }
+                            }
 
-                // اگر عکس قبلاً لوڈ شده باشد
-                if (img.complete) {
-                    if (img.naturalHeight === 0) {
-                        // عکس خراب است
-                        tryNextSize(img, iconPath, wrapper, symbol);
-                    }
-                }
+                            // Setup Image Error Handlers - بهبود‌شده برای Mini App
+                            function setupImageErrorHandlers() {
+                                const images = document.querySelectorAll('.card-icon-img');
+                                images.forEach(img => {
+                                    if (img.__handlersSetup) return; // تا دوبار اجرا نشود
+                                    img.__handlersSetup = true;
 
-                // برای عکس‌های جدید
-                img.addEventListener('load', function () {
-                    this.style.display = 'block';
-                });
+                                    const symbol = img.getAttribute('data-symbol');
+                                    const iconPath = img.getAttribute('data-icon-path');
+                                    const wrapper = img.parentElement;
 
-                img.addEventListener('error', function () {
-                    tryNextSize(this, iconPath, wrapper, symbol);
-                });
-            });
-        }
+                                    // اگر عکس قبلاً لوڈ شده باشد
+                                    if (img.complete) {
+                                        if (img.naturalHeight === 0 && img.naturalWidth === 0) {
+                                            // عکس خراب است
+                                            tryNextSize(img, iconPath, wrapper, symbol, 0);
+                                        } else {
+                                            img.style.display = 'block';
+                                        }
+                                    }
 
-        // Try Next Image Size
-        function tryNextSize(img, iconPath, wrapper, symbol) {
-            const currentSrc = img.src;
-            let nextSize = '256x256';
+                                    // برای عکس‌های جدید
+                                    img.addEventListener('load', function () {
+                                        this.style.display = 'block';
+                                    });
 
-            if (currentSrc.includes('256x256')) {
-                nextSize = '128x128';
-            } else if (currentSrc.includes('128x128')) {
-                nextSize = '64x64';
-            } else {
-                // تمام سایز‌ها ناموفق - نمایش fallback
-                wrapper.innerHTML = createSymbolFallback(symbol);
-                return;
-            }
+                                    img.addEventListener('error', function () {
+                                        tryNextSize(this, iconPath, wrapper, symbol, 0);
+                                    });
 
-            // تلاش برای سایز بعدی
-            const newSrc = `https://brsapi.ir/Api/Market/GCC/Icon/${nextSize}/${iconPath}`;
-            const newImg = document.createElement('img');
-            newImg.src = newSrc;
-            newImg.alt = symbol;
-            newImg.className = 'card-icon-img';
-            newImg.setAttribute('data-symbol', symbol);
-            newImg.setAttribute('data-icon-path', iconPath);
-            newImg.style.cssText = img.style.cssText;
-            newImg.draggable = false;
+                                    // Timeout برای مواقع آفلاین یا بسیار کند
+                                    setTimeout(() => {
+                                        if (!img.__handlersSetup || img.__timeoutChecked) return;
+                                        img.__timeoutChecked = true;
 
-            newImg.addEventListener('load', function () {
-                this.style.display = 'block';
-                img.replaceWith(this);
-            });
+                                        if (!img.complete || (img.naturalHeight === 0 && img.naturalWidth === 0)) {
+                                            tryNextSize(img, iconPath, wrapper, symbol, 0);
+                                        }
+                                    }, 5000);
+                                });
+                            }
 
-            newImg.addEventListener('error', function () {
-                tryNextSize(this, iconPath, wrapper, symbol);
-            });
+                            // Try Next Image Size - بهبود‌شده
+                            function tryNextSize(img, iconPath, wrapper, symbol, attemptCount = 0) {
+                                const sizes = ['256x256', '128x128', '64x64'];
+                                const maxAttempts = sizes.length;
 
-            img.replaceWith(newImg);
-        }
+                                if (attemptCount >= maxAttempts) {
+                                    // تمام سایز‌ها ناموفق - نمایش fallback
+                                    wrapper.innerHTML = createSymbolFallback(symbol);
+                                    return;
+                                }
 
-        // Format Time
-        function formatTime(date) {
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            return `${hours}:${minutes}`;
-        }
+                                const nextSize = sizes[attemptCount];
+                                const newSrc = `https://brsapi.ir/Api/Market/GCC/Icon/${nextSize}/${iconPath}`;
 
-        // Format Date (Jalali with English digits)
-        function formatDateJalali(date) {
-            const jalaliDate = date.toLocaleDateString('fa-IR');
-            // تبدیل اعداد فارسی به انگلیسی
-            return jalaliDate.replace(/\u06F0/g, '0')
-                .replace(/\u06F1/g, '1')
-                .replace(/\u06F2/g, '2')
-                .replace(/\u06F3/g, '3')
-                .replace(/\u06F4/g, '4')
-                .replace(/\u06F5/g, '5')
-                .replace(/\u06F6/g, '6')
-                .replace(/\u06F7/g, '7')
-                .replace(/\u06F8/g, '8')
-                .replace(/\u06F9/g, '9');
-        }
+                                const newImg = document.createElement('img');
+                                newImg.src = newSrc;
+                                newImg.alt = symbol;
+                                newImg.className = 'card-icon-img';
+                                newImg.setAttribute('data-symbol', symbol);
+                                newImg.setAttribute('data-icon-path', iconPath);
+                                newImg.style.cssText = img.style.cssText;
+                                newImg.draggable = false;
+                                newImg.crossOrigin = 'anonymous';
 
-        // Update bottom nav datetime
-        function updateNavDateTime() {
-            const now = new Date();
-            document.getElementById('navDate').textContent = formatDateJalali(now);
-            document.getElementById('navTime').textContent = formatTime(now);
-        }
+                                const loadTimeout = setTimeout(() => {
+                                    // اگر بعد از 3 ثانیه لود نشد، سراغ سایز بعدی
+                                    if (!newImg.complete) {
+                                        tryNextSize(newImg, iconPath, wrapper, symbol, attemptCount + 1);
+                                    }
+                                }, 3000);
 
-        // Toggle Dark Mode
-        function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            document.body.classList.toggle('light-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
-            localStorage.setItem('darkMode', isDark ? 'true' : 'false');
-        }
+                                newImg.addEventListener('load', function () {
+                                    clearTimeout(loadTimeout);
+                                    this.style.display = 'block';
+                                    if (img.parentElement) {
+                                        img.replaceWith(this);
+                                    }
+                                });
 
-        // Load dark mode preference
-        function loadDarkModePreference() {
-            const isDark = localStorage.getItem('darkMode') !== 'false'; // پیش‌فرض dark mode
-            if (isDark) {
-                document.body.classList.add('dark-mode');
-                document.getElementById('themeToggle').textContent = '☀️';
-            } else {
-                document.body.classList.add('light-mode');
-                document.getElementById('themeToggle').textContent = '🌙';
-            }
-        }
+                                newImg.addEventListener('error', function () {
+                                    clearTimeout(loadTimeout);
+                                    tryNextSize(this, iconPath, wrapper, symbol, attemptCount + 1);
+                                });
 
-        // Simplified Scroll Manager
-        let lastScrollTop = 0;
+                                if (img.parentElement) {
+                                    img.replaceWith(newImg);
+                                } else {
+                                    wrapper.innerHTML = '';
+                                    wrapper.appendChild(newImg);
+                                }
+                            }
 
-        window.addEventListener('scroll', () => {
-            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-            const bottomNav = document.getElementById('bottomNav');
+                            // Format Time
+                            function formatTime(date) {
+                                const hours = String(date.getHours()).padStart(2, '0');
+                                const minutes = String(date.getMinutes()).padStart(2, '0');
+                                return `${hours}:${minutes}`;
+                            }
 
-            // منطق snack bar
-            if (scrollTop > lastScrollTop && scrollTop > 200) {
-                // scrolling down
-                bottomNav.classList.add('hidden');
-            } else {
-                // scrolling up
-                bottomNav.classList.remove('hidden');
-            }
+                            // Format Date (Jalali with English digits)
+                            function formatDateJalali(date) {
+                                const jalaliDate = date.toLocaleDateString('fa-IR');
+                                // تبدیل اعداد فارسی به انگلیسی
+                                return jalaliDate.replace(/\u06F0/g, '0')
+                                    .replace(/\u06F1/g, '1')
+                                    .replace(/\u06F2/g, '2')
+                                    .replace(/\u06F3/g, '3')
+                                    .replace(/\u06F4/g, '4')
+                                    .replace(/\u06F5/g, '5')
+                                    .replace(/\u06F6/g, '6')
+                                    .replace(/\u06F7/g, '7')
+                                    .replace(/\u06F8/g, '8')
+                                    .replace(/\u06F9/g, '9');
+                            }
 
-            lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
-        }, { passive: true });
+                            // Update bottom nav datetime
+                            function updateNavDateTime() {
+                                const now = new Date();
+                                document.getElementById('navDate').textContent = formatDateJalali(now);
+                                document.getElementById('navTime').textContent = formatTime(now);
+                            }
 
-        // Update Indicator Position
-        function updateIndicator(skipTransition = false) {
-            const activeTab = document.querySelector('.nav-tab.active');
-            const navTabs = document.querySelector('.nav-tabs');
+                            // Toggle Dark Mode
+                            function toggleDarkMode() {
+                                document.body.classList.toggle('dark-mode');
+                                document.body.classList.toggle('light-mode');
+                                const isDark = document.body.classList.contains('dark-mode');
+                                document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
+                                localStorage.setItem('darkMode', isDark ? 'true' : 'false');
+                            }
 
-            if (activeTab && navTabs) {
-                const tabRect = activeTab.getBoundingClientRect();
-                const containerRect = navTabs.getBoundingClientRect();
+                            // Load dark mode preference
+                            function loadDarkModePreference() {
+                                const isDark = localStorage.getItem('darkMode') !== 'false'; // پیش‌فرض dark mode
+                                if (isDark) {
+                                    document.body.classList.add('dark-mode');
+                                    document.getElementById('themeToggle').textContent = '☀️';
+                                } else {
+                                    document.body.classList.add('light-mode');
+                                    document.getElementById('themeToggle').textContent = '🌙';
+                                }
+                            }
 
-                const offset = tabRect.left - containerRect.left;
-                const width = tabRect.width;
+                            // Simplified Scroll Manager
+                            let lastScrollTop = 0;
 
-                navTabs.style.setProperty('--indicator-left', `${offset}px`);
-                navTabs.style.setProperty('--indicator-width', `${width}px`);
+                            window.addEventListener('scroll', () => {
+                                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                                const bottomNav = document.getElementById('bottomNav');
 
-                // Remove init class to enable transition after first update
-                if (skipTransition && navTabs.classList.contains('init')) {
-                    requestAnimationFrame(() => {
-                        navTabs.classList.remove('init');
-                    });
-                }
-            }
-        }
+                                // منطق snack bar
+                                if (scrollTop > lastScrollTop && scrollTop > 200) {
+                                    // scrolling down
+                                    bottomNav.classList.add('hidden');
+                                } else {
+                                    // scrolling up
+                                    bottomNav.classList.remove('hidden');
+                                }
 
-        // Switch tab
-        function switchTab(filter) {
-            currentFilter = filter;
-            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-            event.target.classList.add('active');
-            updateIndicator();
-            filterAndRender();
-            // صفحه را به بالا ببر
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        }
+                                lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+                            }, { passive: true });
 
-        // Fetch Data from API (via Cloudflare Worker Proxy)
-        async function fetchData() {
-            try {
-                document.getElementById('loadingState').style.display = 'none';
-                document.getElementById('priceGrid').innerHTML = '';
-                document.getElementById('emptyState').style.display = 'none';
+                            // Update Indicator Position
+                            function updateIndicator(skipTransition = false) {
+                                const activeTab = document.querySelector('.nav-tab.active');
+                                const navTabs = document.querySelector('.nav-tabs');
 
-                // نمایش skeleton loading
-                const grid = document.getElementById('priceGrid');
-                const skeletonCount = 4;
-                for (let i = 0; i < skeletonCount; i++) {
-                    grid.appendChild(createSkeletonCard());
-                }
+                                if (activeTab && navTabs) {
+                                    const tabRect = activeTab.getBoundingClientRect();
+                                    const containerRect = navTabs.getBoundingClientRect();
 
-                // درخواست از Worker proxy
-                const response = await fetch(`${API_URL}?section=gold,currency,cryptocurrency`);
-                const data = await response.json();
+                                    const offset = tabRect.left - containerRect.left;
+                                    const width = tabRect.width;
 
-                if (data.successful) {
-                    // Process Gold Data
-                    if (data.gold) {
-                        allData.gold = [
-                            ...data.gold.ounce.map(item => ({ ...item, type: 'gold', category: 'ounce' })),
-                            ...data.gold.type.map(item => ({ ...item, type: 'gold', category: 'type' })),
-                            ...data.gold.coin.map(item => ({ ...item, type: 'gold', category: 'coin' })),
-                            ...data.gold.coin_parsian.map(item => ({ ...item, type: 'gold', category: 'coin_parsian' }))
-                        ];
-                    }
+                                    navTabs.style.setProperty('--indicator-left', `${offset}px`);
+                                    navTabs.style.setProperty('--indicator-width', `${width}px`);
 
-                    // Process Currency Data
-                    if (data.currency && data.currency.free) {
-                        allData.currency = data.currency.free.map(item => ({ ...item, type: 'currency' }));
-                    }
+                                    // Remove init class to enable transition after first update
+                                    if (skipTransition && navTabs.classList.contains('init')) {
+                                        requestAnimationFrame(() => {
+                                            navTabs.classList.remove('init');
+                                        });
+                                    }
+                                }
+                            }
 
-                    // Process Crypto Data
-                    if (data.cryptocurrency) {
-                        allData.cryptocurrency = data.cryptocurrency.map(item => ({ ...item, type: 'crypto' }));
-                    }
+                            // Switch tab
+                            function switchTab(filter) {
+                                currentFilter = filter;
+                                document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+                                event.target.classList.add('active');
+                                updateIndicator();
+                                filterAndRender();
+                                // صفحه را به بالا ببر
+                                window.scrollTo({
+                                    top: 0,
+                                    behavior: 'smooth'
+                                });
+                            }
 
-                    // Update Filter and Render
-                    filterAndRender();
+                            // Fetch Data from API (via Cloudflare Worker Proxy)
+                            async function fetchData() {
+                                try {
+                                    document.getElementById('loadingState').style.display = 'none';
+                                    document.getElementById('priceGrid').innerHTML = '';
+                                    document.getElementById('emptyState').style.display = 'none';
 
-                    // Update Time
-                    document.getElementById('updateTime').textContent = formatTime(new Date());
-                } else {
-                    showError('خطا در دریافت اطلاعات از API');
-                }
-            } catch (error) {
-                console.error('خطا:', error);
-                showError('خطا در اتصال به سرور');
-            } finally {
-                document.getElementById('loadingState').style.display = 'none';
-            }
-        }
+                                    // نمایش skeleton loading
+                                    const grid = document.getElementById('priceGrid');
+                                    const skeletonCount = 4;
+                                    for (let i = 0; i < skeletonCount; i++) {
+                                        grid.appendChild(createSkeletonCard());
+                                    }
 
-        // Filter and Render
-        function filterAndRender() {
-            let dataToRender = [];
+                                    // درخواست از Worker proxy
+                                    const response = await fetch(`${API_URL}?section=gold,currency,cryptocurrency`);
+                                    const data = await response.json();
 
-            if (currentFilter === 'all') {
-                dataToRender = [...allData.gold, ...allData.currency, ...allData.cryptocurrency];
-            } else if (currentFilter === 'gold') {
-                dataToRender = allData.gold;
-            } else if (currentFilter === 'currency') {
-                dataToRender = allData.currency;
-            } else if (currentFilter === 'crypto') {
-                dataToRender = allData.cryptocurrency;
-            }
+                                    if (data.successful) {
+                                        // Process Gold Data
+                                        if (data.gold) {
+                                            allData.gold = [
+                                                ...data.gold.ounce.map(item => ({ ...item, type: 'gold', category: 'ounce' })),
+                                                ...data.gold.type.map(item => ({ ...item, type: 'gold', category: 'type' })),
+                                                ...data.gold.coin.map(item => ({ ...item, type: 'gold', category: 'coin' })),
+                                                ...data.gold.coin_parsian.map(item => ({ ...item, type: 'gold', category: 'coin_parsian' }))
+                                            ];
+                                        }
 
-            // Apply Search Filter
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            if (searchTerm) {
-                dataToRender = dataToRender.filter(item => {
-                    const name = item.name ? item.name.toLowerCase() : '';
-                    const nameEn = item.name_en ? item.name_en.toLowerCase() : '';
-                    const symbol = item.symbol ? item.symbol.toLowerCase() : '';
-                    return name.includes(searchTerm) || nameEn.includes(searchTerm) || symbol.includes(searchTerm);
-                });
-            }
+                                        // Process Currency Data
+                                        if (data.currency && data.currency.free) {
+                                            allData.currency = data.currency.free.map(item => ({ ...item, type: 'currency' }));
+                                        }
 
-            filteredData = dataToRender;
+                                        // Process Crypto Data
+                                        if (data.cryptocurrency) {
+                                            allData.cryptocurrency = data.cryptocurrency.map(item => ({ ...item, type: 'crypto' }));
+                                        }
 
-            if (dataToRender.length === 0) {
-                document.getElementById('emptyState').style.display = 'block';
-                document.getElementById('priceGrid').innerHTML = '';
-            } else {
-                document.getElementById('emptyState').style.display = 'none';
-                renderPrices(dataToRender);
-            }
-        }
+                                        // Update Filter and Render
+                                        filterAndRender();
 
-        // Create Skeleton Card
-        function createSkeletonCard() {
-            const card = document.createElement('div');
-            card.className = 'price-card skeleton-card';
-            card.innerHTML = `
+                                        // Update Time
+                                        document.getElementById('updateTime').textContent = formatTime(new Date());
+                                    } else {
+                                        showError('خطا در دریافت اطلاعات از API');
+                                    }
+                                } catch (error) {
+                                    console.error('خطا:', error);
+                                    showError('خطا در اتصال به سرور');
+                                } finally {
+                                    document.getElementById('loadingState').style.display = 'none';
+                                }
+                            }
+
+                            // Filter and Render
+                            function filterAndRender() {
+                                let dataToRender = [];
+
+                                if (currentFilter === 'all') {
+                                    dataToRender = [...allData.gold, ...allData.currency, ...allData.cryptocurrency];
+                                } else if (currentFilter === 'gold') {
+                                    dataToRender = allData.gold;
+                                } else if (currentFilter === 'currency') {
+                                    dataToRender = allData.currency;
+                                } else if (currentFilter === 'crypto') {
+                                    dataToRender = allData.cryptocurrency;
+                                }
+
+                                // Apply Search Filter
+                                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                                if (searchTerm) {
+                                    dataToRender = dataToRender.filter(item => {
+                                        const name = item.name ? item.name.toLowerCase() : '';
+                                        const nameEn = item.name_en ? item.name_en.toLowerCase() : '';
+                                        const symbol = item.symbol ? item.symbol.toLowerCase() : '';
+                                        return name.includes(searchTerm) || nameEn.includes(searchTerm) || symbol.includes(searchTerm);
+                                    });
+                                }
+
+                                filteredData = dataToRender;
+
+                                if (dataToRender.length === 0) {
+                                    document.getElementById('emptyState').style.display = 'block';
+                                    document.getElementById('priceGrid').innerHTML = '';
+                                } else {
+                                    document.getElementById('emptyState').style.display = 'none';
+                                    renderPrices(dataToRender);
+                                }
+                            }
+
+                            // Create Skeleton Card
+                            function createSkeletonCard() {
+                                const card = document.createElement('div');
+                                card.className = 'price-card skeleton-card';
+                                card.innerHTML = `
                 <div class="skeleton-header">
                     <div class="skeleton-element skeleton-icon"></div>
                     <div class="skeleton-title">
@@ -1452,62 +2078,66 @@
                 <div class="skeleton-element skeleton-footer"></div>
                 <div class="skeleton-element skeleton-btn"></div>
             `;
-            return card;
-        }
+                                return card;
+                            }
 
-        // Render Price Cards
-        function renderPrices(data) {
-            const grid = document.getElementById('priceGrid');
-            grid.innerHTML = '';
+                            // Render Price Cards
+                            function renderPrices(data) {
+                                const grid = document.getElementById('priceGrid');
+                                grid.innerHTML = '';
 
-            data.forEach(item => {
-                const card = createPriceCard(item);
-                grid.appendChild(card);
-            });
+                                data.forEach(item => {
+                                    const card = createPriceCard(item);
+                                    grid.appendChild(card);
+                                });
 
-            // Setup image error handlers بعد از رندر
-            setTimeout(() => {
-                setupImageErrorHandlers();
-            }, 0);
-        }
+                                // Setup image error handlers بعد از رندر - فوری و بعد از delay
+                                setupImageErrorHandlers();
+                                setTimeout(() => {
+                                    setupImageErrorHandlers();
+                                }, 100);
+                                setTimeout(() => {
+                                    setupImageErrorHandlers();
+                                }, 500);
+                            }
 
-        // Create Price Card Element
-        function createPriceCard(item) {
-            const card = document.createElement('div');
-            card.className = 'price-card';
+                            // Create Price Card Element
+                            function createPriceCard(item) {
+                                const card = document.createElement('div');
+                                card.className = 'price-card';
 
-            const change = parseFloat(item.change_percent) || 0;
-            const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
-            const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
+                                const change = parseFloat(item.change_percent) || 0;
+                                const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
+                                const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
 
-            // ساخت آدرس آیکن از API (از path_icon در پاسخ API)
-            let iconElement = '';
-            if (item.path_icon) {
-                iconElement = loadIconWithFallback(item.path_icon, item.symbol);
-            } else if (item.symbol) {
-                // Fallback: نمایش symbol به صورت متنی اگر icon موجود نباشد
-                iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">${item.symbol}</div>`;
-            } else {
-                iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">💰</div>`;
-            }
+                                // ساخت آدرس آیکن از API (از path_icon در پاسخ API)
+                                let iconElement = '';
+                                if (item.path_icon) {
+                                    iconElement = loadIconWithFallback(item.path_icon, item.symbol);
+                                } else if (item.symbol) {
+                                    // Fallback: نمایش symbol به صورت متنی اگر icon موجود نباشد
+                                    iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">${item.symbol}</div>`;
+                                } else {
+                                    iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">💰</div>`;
+                                }
 
-            // برای ارزهای دیجیتال (crypto) دو قیمت نمایش بده (دلاری و تومانی)
-            let price = item.price;
-            let unit = item.unit;
-            let priceDisplay = '';
+                                // برای ارزهای دیجیتال (crypto) دو قیمت نمایش بده (دلاری و تومانی)
+                                let price = item.price;
+                                let unit = item.unit;
+                                let priceDisplay = '';
 
-            if (item.type === 'crypto') {
-                // قیمت دلاری
-                let dollarPrice = item.price;
-                if (item.symbol === 'USDT') {
-                    dollarPrice = '1';
-                }
-                const formattedDollarPrice = formatPrice(dollarPrice);
+                                if (item.type === 'crypto') {
+                                    // قیمت دلاری
+                                    let dollarPrice = item.price;
+                                    if (item.symbol === 'USDT') {
+                                        dollarPrice = '1';
+                                    }
+                                    const formattedDollarPrice = formatPrice(dollarPrice);
 
-                // قیمت تومانی
-                const formattedTomanPrice = formatPrice(item.price_toman);
+                                    // قیمت تومانی
+                                    const formattedTomanPrice = formatPrice(item.price_toman);
 
-                priceDisplay = `
+                                    priceDisplay = `
                     <div class="card-price">
                         ${formattedDollarPrice}
                         <span class="unit">دلار</span>
@@ -1517,19 +2147,19 @@
                         <span class="unit">تومان</span>
                     </div>
                 `;
-            } else {
-                price = formatPrice(price);
-                priceDisplay = `
+                                } else {
+                                    price = formatPrice(price);
+                                    priceDisplay = `
                     <div class="card-price">
                         ${price}
                         <span class="unit">${unit}</span>
                     </div>
                 `;
-            }
+                                }
 
-            const changeValue = formatPrice(Math.abs(item.change_value || 0));
+                                const changeValue = formatPrice(Math.abs(item.change_value || 0));
 
-            card.innerHTML = `
+                                card.innerHTML = `
                 <div class="card-header">
                     <div class="card-icon">
                         ${iconElement}
@@ -1564,355 +2194,860 @@
                 </div>
                 
                 <button class="chart-btn" onclick="openChartModal('${item.symbol}', '${item.name}')">
-                    📊 نمودار قیمت 24 ساعت
+                    📊 نمودار تکنیکال
                 </button>
             `;
 
-            return card;
-        }
+                                return card;
+                            }
 
-        // Show Error
-        function showError(message) {
-            const grid = document.getElementById('priceGrid');
-            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: white; padding: 40px;">❌ ${message}</div>`;
-        }
+                            // Show Error
+                            function showError(message) {
+                                const grid = document.getElementById('priceGrid');
+                                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: white; padding: 40px;">❌ ${message}</div>`;
+                            }
 
-        // Open Chart Modal
-        async function openChartModal(symbol, name) {
-            document.getElementById('chartModalTitle').textContent = `نمودار قیمت - ${name}`;
-            document.getElementById('chartModalSymbol').textContent = symbol;
-            document.getElementById('chartModal').classList.add('active');
+                            // Open Chart Modal
+                            async function openChartModal(symbol, name) {
+                                document.getElementById('chartModalTitle').textContent = `نمودار قیمت - ${name}`;
+                                document.getElementById('chartModalSymbol').textContent = symbol;
+                                document.getElementById('chartModal').classList.add('active');
 
-            // اضافه کردن overflow hidden به body
-            document.body.classList.add('modal-open');
+                                // اضافه کردن overflow hidden به body
+                                document.body.classList.add('modal-open');
 
-            // نمایش loading برای نمودار
-            const chartContainer = document.getElementById('priceChart').parentElement;
-            chartContainer.innerHTML = `
+                                // ذخیره state
+                                chartState.currentSymbol = symbol;
+                                chartState.currentName = name;
+                                chartState.currentChartType = 'line';
+                                chartState.currentTimeframe = '45m';
+                                currentZoom = 1;
+
+                                // نمایش loading برای نمودار
+                                const chartContainer = document.querySelector('.chart-container');
+                                chartContainer.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
                     <div style="width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                     <p style="color: #999; font-size: 14px;">در حال بارگذاری نمودار...</p>
                 </div>
             `;
 
-            await fetchHistoryData(symbol);
-        }
+                                // Reset dropdowns
+                                document.getElementById('chartTypeLabel').textContent = 'خط';
+                                document.getElementById('timeframeLabel').textContent = '45د';
+                                document.getElementById('zoomLevel').textContent = '100%';
 
-        // Close Chart Modal
-        function closeChartModal() {
-            document.getElementById('chartModal').classList.remove('active');
-            // حذف overflow hidden از body
-            document.body.classList.remove('modal-open');
-        }
+                                document.querySelectorAll('#chartTypeDropdown .dropdown-item').forEach(item => {
+                                    item.classList.remove('active');
+                                    if (item.getAttribute('data-type') === 'line') {
+                                        item.classList.add('active');
+                                    }
+                                });
 
-        // Fetch History Data (24-hour history)
-        async function fetchHistoryData(symbol) {
-            try {
-                console.log(`📥 درخواست تاریخچه 24 ساعت برای: ${symbol}`);
-                const chartContainer = document.querySelector('.chart-container');
+                                document.querySelectorAll('#timeframeDropdown .dropdown-item').forEach(item => {
+                                    item.classList.remove('active');
+                                    if (item.getAttribute('data-timeframe') === '45m') {
+                                        item.classList.add('active');
+                                    }
+                                });
 
-                // درخواست از Worker proxy
-                const response = await fetch(`${API_URL}?history=1&symbol=${symbol}`);
-                const data = await response.json();
-
-                console.log(`📊 پاسخ API:`, data);
-
-                // API تاریخچه بدون successful بازمی‌گرداند - فقط بررسی history_24h
-                if (data && data.history_24h && Array.isArray(data.history_24h) && data.history_24h.length > 0) {
-                    console.log(`✅ داده‌های تاریخچه دریافت شد: ${data.history_24h.length} رکورد`);
-                    renderChart(data.history_24h, symbol, data.name);
-                } else if (data.error || data.message_error) {
-                    console.error('❌ خطای API:', data.error || data.message_error);
-                    chartContainer.innerHTML = `<p style="text-align:center; color:#666;">⚠️ ${data.error || data.message_error}</p>`;
-                } else {
-                    console.error('❌ داده تاریخچه دریافت نشد یا خالی است:', data);
-                    chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا: داده تاریخچه در دسترس نیست</p>';
-                }
-            } catch (error) {
-                console.error('❌ خطا در بارگذاری تاریخچه:', error);
-                const chartContainer = document.querySelector('.chart-container');
-                chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در اتصال به سرور: ' + error.message + '</p>';
-            }
-        }
-
-        // Render Chart (24-hour history)
-        function renderChart(historyData, symbol, name) {
-            const chartContainer = document.querySelector('.chart-container');
-
-            // حذف skeleton loading و بازسازی canvas
-            chartContainer.innerHTML = '<canvas id="priceChart"></canvas>';
-
-            const ctx = document.getElementById('priceChart').getContext('2d');
-
-            // ترتیب معکوس: از قدیمی‌تر به جدید‌تر
-            const sortedData = [...historyData].reverse();
-
-            // آماده‌سازی داده‌ها
-            const labels = sortedData.map(item => {
-                // نمایش تاریخ و ساعت فشرده
-                const time = item.time ? item.time.substring(0, 5) : '--';
-                return time;
-            });
-
-            const prices = sortedData.map(item => parseFloat(item.price));
-
-            // حذف نمودار قبلی
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-
-            // ایجاد نمودار جدید
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: `قیمت ${name} (${symbol})`,
-                        data: prices,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        borderWidth: 2.5,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#667eea',
-                        pointBorderColor: 'white',
-                        pointBorderWidth: 1.5,
-                        pointHoverRadius: 5,
-                        hoverBorderWidth: 3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            labels: {
-                                font: { family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", size: 14, weight: 'bold' },
-                                padding: 15,
-                                usePointStyle: true
+                                // بارگذاری داده‌های اولیه
+                                await fetchHistoryData(symbol);
                             }
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(0,0,0,0.7)',
-                            titleFont: { size: 14 },
-                            bodyFont: { size: 13 },
-                            padding: 12,
-                            borderRadius: 8,
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            displayColors: false,
-                            callbacks: {
-                                label: function (context) {
-                                    const idx = context.dataIndex;
-                                    const originalData = sortedData[idx];
-                                    const price = formatPrice(originalData.price);
-                                    const change = originalData.change_percent.toFixed(2);
-                                    const changeIcon = originalData.change_percent > 0 ? '📈' : originalData.change_percent < 0 ? '📉' : '⚖️';
-                                    const absChange = Math.abs(change);
-                                    const sign = originalData.change_percent > 0 ? '+' : originalData.change_percent < 0 ? '-' : '';
-                                    const changeDisplay = `\u202A${sign}${absChange}%\u202C`;
-                                    return `قیمت: ${price}\nتغییر: ${changeIcon} ${changeDisplay}`;
-                                },
-                                title: function (context) {
-                                    const idx = context[0].dataIndex;
-                                    const originalData = sortedData[idx];
-                                    return `${originalData.date} - ${originalData.time}`;
+
+                            // Close Chart Modal
+                            function closeChartModal() {
+                                document.getElementById('chartModal').classList.remove('active');
+                                // حذف overflow hidden از body
+                                document.body.classList.remove('modal-open');
+                            }
+
+                            // Fetch History Data (24-hour history)
+                            async function fetchHistoryData(symbol) {
+                                try {
+                                    console.log(`📥 درخواست تاریخچه برای: ${symbol} - ${chartState.currentTimeframe}`);
+                                    const chartContainer = document.querySelector('.chart-container');
+
+                                    // درخواست از Worker proxy
+                                    const response = await fetch(`${API_URL}?history=1&symbol=${symbol}&timeframe=${chartState.currentTimeframe}`);
+                                    const data = await response.json();
+
+                                    console.log(`📊 پاسخ API:`, data);
+
+                                    // API تاریخچه بدون successful بازمی‌گرداند - فقط بررسی history_24h
+                                    if (data && data.history_24h && Array.isArray(data.history_24h) && data.history_24h.length > 0) {
+                                        console.log(`✅ داده‌های تاریخچه دریافت شد: ${data.history_24h.length} رکورد`);
+                                        chartState.historicalData = data.history_24h;
+                                        renderChart(data.history_24h, symbol, data.name);
+                                    } else if (data.error || data.message_error) {
+                                        console.error('❌ خطای API:', data.error || data.message_error);
+                                        chartContainer.innerHTML = `<p style="text-align:center; color:#666;">⚠️ ${data.error || data.message_error}</p>`;
+                                    } else {
+                                        console.error('❌ داده تاریخچه دریافت نشد یا خالی است:', data);
+                                        chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا: داده تاریخچه در دسترس نیست</p>';
+                                    }
+                                } catch (error) {
+                                    console.error('❌ خطا در بارگذاری تاریخچه:', error);
+                                    const chartContainer = document.querySelector('.chart-container');
+                                    chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در اتصال به سرور: ' + error.message + '</p>';
                                 }
                             }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            title: {
-                                display: true,
-                                text: 'قیمت (تومان)'
-                            },
-                            ticks: {
-                                callback: function (value) {
-                                    return formatPrice(value);
-                                },
-                                font: { size: 11 }
-                            },
-                            grid: {
-                                color: 'rgba(0,0,0,0.1)'
+
+                            // Prepare OHLC data for candlestick charts
+                            function prepareOHLCData(data, timeframe) {
+                                // ساده‌سازی برای اکنون - بعداً باید از API داده‌های OHLC را بگیرید
+                                const ohlcData = [];
+
+                                for (let i = 0; i < Math.min(data.length - 1, data.length); i++) {
+                                    const current = data[i];
+                                    const next = data[i + 1];
+
+                                    const price = parseFloat(current.price);
+                                    const nextPrice = parseFloat(next.price);
+
+                                    ohlcData.push({
+                                        date: current.date,
+                                        time: current.time,
+                                        open: price,
+                                        high: Math.max(price, nextPrice),
+                                        low: Math.min(price, nextPrice),
+                                        close: nextPrice,
+                                        change_percent: current.change_percent,
+                                        originalData: current
+                                    });
+                                }
+
+                                return ohlcData;
                             }
-                        },
-                        x: {
-                            ticks: {
-                                font: { size: 11 }
-                            },
-                            grid: {
-                                display: false
+
+                            // Render Chart with different chart types
+                            function renderChart(historyData, symbol, name) {
+                                const chartContainer = document.querySelector('.chart-container');
+
+                                // حذف skeleton loading و بازسازی canvas
+                                chartContainer.innerHTML = '<canvas id="priceChart"></canvas>';
+
+                                const ctx = document.getElementById('priceChart').getContext('2d');
+
+                                // ترتیب معکوس: از قدیمی‌تر به جدید‌تر
+                                const sortedData = [...historyData].reverse();
+
+                                // آماده‌سازی داده‌ها بر اساس نوع نمودار
+                                let chartConfig = {};
+
+                                const labels = sortedData.map(item => {
+                                    const time = item.time ? item.time.substring(0, 5) : '--';
+                                    return time;
+                                });
+
+                                const prices = sortedData.map(item => parseFloat(item.price));
+                                const changes = sortedData.map(item => item.change_percent);
+
+                                // حذف نمودار قبلی
+                                if (chartInstance) {
+                                    chartInstance.destroy();
+                                }
+
+                                // انتخاب نوع نمودار
+                                switch (chartState.currentChartType) {
+                                    case 'line':
+                                        chartConfig = createLineChart(labels, prices, name, symbol, sortedData);
+                                        break;
+                                    case 'line-markers':
+                                        chartConfig = createLineWithMarkersChart(labels, prices, name, symbol, sortedData);
+                                        break;
+                                    case 'step-line':
+                                        chartConfig = createStepLineChart(labels, prices, name, symbol, sortedData);
+                                        break;
+                                    case 'area':
+                                        chartConfig = createAreaChart(labels, prices, name, symbol, sortedData);
+                                        break;
+                                    case 'bars':
+                                        chartConfig = createBarsChart(labels, prices, name, symbol, sortedData);
+                                        break;
+                                    case 'columns':
+                                        chartConfig = createColumnsChart(labels, prices, name, symbol, sortedData);
+                                        break;
+                                    case 'candles':
+                                    case 'hollow-candles':
+                                        // برای شمع‌ها باید OHLC داده بگیریم
+                                        chartConfig = createCandleChart(labels, sortedData, name, symbol);
+                                        break;
+                                    default:
+                                        chartConfig = createLineChart(labels, prices, name, symbol, sortedData);
+                                }
+
+                                // ایجاد نمودار جدید
+                                chartInstance = new Chart(ctx, chartConfig);
+
+                                // اضافه کردن crosshair functionality
+                                setupChartCrosshair(chartInstance, sortedData);
                             }
-                        }
-                    }
-                }
-            });
-        }
 
-        // Clear Search Input
-        function clearSearch() {
-            const searchInput = document.getElementById('searchInput');
-            const clearBtn = document.getElementById('searchClear');
-            searchInput.value = '';
-            clearBtn.classList.remove('visible');
-            filterAndRender();
-            searchInput.focus();
-        }
+                            // Chart creation functions
+                            function createLineChart(labels, prices, name, symbol, sortedData) {
+                                return {
+                                    type: 'line',
+                                    data: {
+                                        labels: labels,
+                                        datasets: [{
+                                            label: `قیمت ${name} (${symbol})`,
+                                            data: prices,
+                                            borderColor: '#667eea',
+                                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                            borderWidth: 2.5,
+                                            fill: true,
+                                            tension: 0.4,
+                                            pointRadius: 0,
+                                            pointHoverRadius: 6,
+                                            pointBackgroundColor: '#667eea',
+                                            pointBorderColor: 'white',
+                                            pointBorderWidth: 2,
+                                            hoverBorderWidth: 3
+                                        }]
+                                    },
+                                    options: getDefaultChartOptions(name, symbol, sortedData, 'line')
+                                };
+                            }
 
-        // Event Listeners
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            const clearBtn = document.getElementById('searchClear');
-            if (e.target.value.length > 0) {
-                clearBtn.classList.add('visible');
-            } else {
-                clearBtn.classList.remove('visible');
-            }
-            filterAndRender();
-        });
+                            function createLineWithMarkersChart(labels, prices, name, symbol, sortedData) {
+                                return {
+                                    type: 'line',
+                                    data: {
+                                        labels: labels,
+                                        datasets: [{
+                                            label: `قیمت ${name} (${symbol})`,
+                                            data: prices,
+                                            borderColor: '#667eea',
+                                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                            borderWidth: 2.5,
+                                            fill: true,
+                                            tension: 0.4,
+                                            pointRadius: 4,
+                                            pointHoverRadius: 7,
+                                            pointBackgroundColor: '#667eea',
+                                            pointBorderColor: 'white',
+                                            pointBorderWidth: 2,
+                                            hoverBorderWidth: 3
+                                        }]
+                                    },
+                                    options: getDefaultChartOptions(name, symbol, sortedData, 'line-markers')
+                                };
+                            }
 
-        // Close Modal on Outside Click
-        document.getElementById('chartModal').addEventListener('click', (e) => {
-            if (e.target.id === 'chartModal') {
-                closeChartModal();
-            }
-        });
+                            function createStepLineChart(labels, prices, name, symbol, sortedData) {
+                                return {
+                                    type: 'line',
+                                    data: {
+                                        labels: labels,
+                                        datasets: [{
+                                            label: `قیمت ${name} (${symbol})`,
+                                            data: prices,
+                                            borderColor: '#667eea',
+                                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                            borderWidth: 2.5,
+                                            fill: true,
+                                            stepped: true,
+                                            tension: 0,
+                                            pointRadius: 0,
+                                            pointHoverRadius: 6,
+                                            pointBackgroundColor: '#667eea',
+                                            pointBorderColor: 'white',
+                                            pointBorderWidth: 2,
+                                            hoverBorderWidth: 3
+                                        }]
+                                    },
+                                    options: getDefaultChartOptions(name, symbol, sortedData, 'step-line')
+                                };
+                            }
 
-        // Close Modal on Escape Key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && document.getElementById('chartModal').classList.contains('active')) {
-                closeChartModal();
-            }
-        });
+                            function createAreaChart(labels, prices, name, symbol, sortedData) {
+                                return {
+                                    type: 'line',
+                                    data: {
+                                        labels: labels,
+                                        datasets: [{
+                                            label: `قیمت ${name} (${symbol})`,
+                                            data: prices,
+                                            borderColor: '#764ba2',
+                                            backgroundColor: 'rgba(118, 75, 162, 0.3)',
+                                            borderWidth: 3,
+                                            fill: true,
+                                            tension: 0.4,
+                                            pointRadius: 0,
+                                            pointHoverRadius: 6,
+                                            pointBackgroundColor: '#764ba2',
+                                            pointBorderColor: 'white',
+                                            pointBorderWidth: 2,
+                                            hoverBorderWidth: 3
+                                        }]
+                                    },
+                                    options: getDefaultChartOptions(name, symbol, sortedData, 'area')
+                                };
+                            }
 
-        // Initial Load
-        fetchData();
-        updateNavDateTime();
-        loadDarkModePreference();
-        setInterval(updateNavDateTime, 60000);
+                            function createBarsChart(labels, prices, name, symbol, sortedData) {
+                                return {
+                                    type: 'bar',
+                                    data: {
+                                        labels: labels,
+                                        datasets: [{
+                                            label: `قیمت ${name} (${symbol})`,
+                                            data: prices,
+                                            backgroundColor: prices.map((price, idx) =>
+                                                idx === 0 || prices[idx] >= prices[idx - 1] ? '#10b981' : '#ef4444'
+                                            ),
+                                            borderRadius: 2,
+                                            barThickness: 'flex',
+                                            maxBarThickness: 20
+                                        }]
+                                    },
+                                    options: getDefaultChartOptions(name, symbol, sortedData, 'bars', true)
+                                };
+                            }
 
-        // Set initial theme indicator for nav tabs
-        document.querySelectorAll('.nav-tab').forEach((tab, index) => {
-            if (index === 0) {
-                tab.classList.add('active');
-            } else {
-                tab.classList.remove('active');
-            }
-        });
+                            function createColumnsChart(labels, prices, name, symbol, sortedData) {
+                                return {
+                                    type: 'bar',
+                                    data: {
+                                        labels: labels,
+                                        datasets: [{
+                                            label: `قیمت ${name} (${symbol})`,
+                                            data: prices,
+                                            backgroundColor: prices.map((price, idx) =>
+                                                idx === 0 || prices[idx] >= prices[idx - 1] ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)'
+                                            ),
+                                            borderRadius: 4,
+                                            barThickness: 'flex',
+                                            maxBarThickness: 16
+                                        }]
+                                    },
+                                    options: getDefaultChartOptions(name, symbol, sortedData, 'columns', true)
+                                };
+                            }
 
-        // Update indicator on initial load (with skipTransition) and window resize
-        setTimeout(() => updateIndicator(true), 0);
-        window.addEventListener('resize', () => updateIndicator(false));
+                            function createCandleChart(labels, sortedData, name, symbol) {
+                                // ساده‌سازی برای شمع‌ها - از داده موجود استفاده می‌کنیم
+                                const candleData = sortedData.map((item, idx) => {
+                                    const price = parseFloat(item.price);
+                                    const prevPrice = idx > 0 ? parseFloat(sortedData[idx - 1].price) : price;
 
-        // غیرفعال کردن تمام تعاملات روی عکس‌ها
-        document.addEventListener('contextmenu', (e) => {
-            if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
-                e.preventDefault();
-                return false;
-            }
-        }, true);
+                                    return {
+                                        x: item.time ? item.time.substring(0, 5) : '--',
+                                        o: prevPrice,
+                                        h: Math.max(price, prevPrice),
+                                        l: Math.min(price, prevPrice),
+                                        c: price
+                                    };
+                                });
 
-        document.addEventListener('mousedown', (e) => {
-            if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
-                e.preventDefault();
-                return false;
-            }
-        }, true);
+                                return {
+                                    type: 'line',
+                                    data: {
+                                        labels: labels,
+                                        datasets: [{
+                                            label: `قیمت ${name} (${symbol})`,
+                                            data: candleData.map(c => c.c),
+                                            borderColor: '#667eea',
+                                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                            borderWidth: 2,
+                                            fill: false,
+                                            pointRadius: 0
+                                        }]
+                                    },
+                                    options: getDefaultChartOptions(name, symbol, sortedData, 'candles')
+                                };
+                            }
 
-        document.addEventListener('dragstart', (e) => {
-            if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
-                e.preventDefault();
-                return false;
-            }
-        }, true);
+                            function getDefaultChartOptions(name, symbol, sortedData, chartType, isBar = false) {
+                                return {
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    interaction: {
+                                        mode: 'index',
+                                        intersect: false
+                                    },
+                                    plugins: {
+                                        legend: {
+                                            display: true,
+                                            labels: {
+                                                font: { family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", size: 14, weight: 'bold' },
+                                                padding: 15,
+                                                usePointStyle: true,
+                                                color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333'
+                                            }
+                                        },
+                                        tooltip: {
+                                            enabled: false // غیرفعال کردن tooltip پیش‌فرض برای crosshair
+                                        }
+                                    },
+                                    scales: {
+                                        y: {
+                                            beginAtZero: false,
+                                            title: {
+                                                display: true,
+                                                text: 'قیمت (تومان)',
+                                                color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333'
+                                            },
+                                            ticks: {
+                                                callback: function (value) {
+                                                    return formatPrice(value);
+                                                },
+                                                font: { size: 11 },
+                                                color: document.body.classList.contains('dark-mode') ? '#aaa' : '#666'
+                                            },
+                                            grid: {
+                                                color: document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
+                                            }
+                                        },
+                                        x: {
+                                            ticks: {
+                                                font: { size: 11 },
+                                                color: document.body.classList.contains('dark-mode') ? '#aaa' : '#666'
+                                            },
+                                            grid: {
+                                                display: false
+                                            }
+                                        }
+                                    }
+                                };
+                            }
 
-        document.addEventListener('dragover', (e) => {
-            if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
-                e.preventDefault();
-                return false;
-            }
-        }, true);
+                            // Setup Crosshair Functionality
+                            function setupChartCrosshair(chart, sortedData) {
+                                const canvas = chart.canvas;
+                                const container = canvas.parentElement;
 
-        // Pull to Refresh for Mobile - بهبود‌شده
-        let pullStartY = 0;
-        let isPulling = false;
-        let isLoading = false;
-        const pullThreshold = 80;
+                                let tooltip = document.querySelector('.chart-tooltip');
+                                if (!tooltip) {
+                                    tooltip = document.createElement('div');
+                                    tooltip.className = 'chart-tooltip';
+                                    container.style.position = 'relative';
+                                    container.appendChild(tooltip);
+                                }
 
-        function showPullToRefreshIndicator() {
-            const indicator = document.getElementById('pullToRefreshIndicator');
-            if (indicator && !isLoading) {
-                indicator.classList.add('active');
-            }
-        }
+                                canvas.addEventListener('mousemove', (e) => {
+                                    const rect = canvas.getBoundingClientRect();
+                                    const x = e.clientX - rect.left;
+                                    const y = e.clientY - rect.top;
 
-        function hidePullToRefreshIndicator() {
-            const indicator = document.getElementById('pullToRefreshIndicator');
-            if (indicator) {
-                indicator.classList.remove('active');
-            }
-        }
+                                    // محاسبه نزدیک‌ترین نقطه
+                                    const canvasPosition = Chart.helpers.getRelativePosition(e, chart);
+                                    const dataX = chart.scales.x.getValueForPixel(canvasPosition.x);
+                                    const dataY = chart.scales.y.getValueForPixel(canvasPosition.y);
 
-        document.addEventListener('touchstart', (e) => {
-            if (window.pageYOffset === 0) {
-                pullStartY = e.touches[0].clientY;
-                isPulling = true;
-            }
-        }, { passive: true });
+                                    // پیدا کردن نزدیک‌ترین نقطه داده
+                                    let closestIndex = Math.round(dataX);
+                                    closestIndex = Math.max(0, Math.min(closestIndex, sortedData.length - 1));
 
-        document.addEventListener('touchmove', (e) => {
-            if (isPulling && window.pageYOffset === 0 && !isLoading) {
-                const pullDistance = e.touches[0].clientY - pullStartY;
+                                    if (closestIndex >= 0 && closestIndex < sortedData.length) {
+                                        const data = sortedData[closestIndex];
+                                        const price = parseFloat(data.price);
+                                        const change = parseFloat(data.change_percent);
+                                        const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
 
-                if (pullDistance > 0) {
-                    // نمایش indicator هنگام کشیدن
-                    if (pullDistance > pullThreshold / 2) {
-                        showPullToRefreshIndicator();
-                    }
-                }
-            }
-        }, { passive: true });
+                                        tooltip.innerHTML = `
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-label">⏰ وقت:</span>
+                            <span class="chart-tooltip-value">${data.date} ${data.time}</span>
+                        </div>
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-label">💰 قیمت:</span>
+                            <span class="chart-tooltip-value">${formatPrice(price)}</span>
+                        </div>
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-label">📊 تغییر:</span>
+                            <span class="chart-tooltip-value">${changeIcon} ${change > 0 ? '+' : ''}${change.toFixed(2)}%</span>
+                        </div>
+                    `;
 
-        document.addEventListener('touchend', (e) => {
-            if (isPulling && !isLoading) {
-                const pullDistance = e.changedTouches[0].clientY - pullStartY;
+                                        tooltip.style.left = (x + 10) + 'px';
+                                        tooltip.style.top = (y - 80) + 'px';
+                                        tooltip.classList.add('visible');
+                                    }
+                                });
 
-                if (pullDistance > pullThreshold) {
-                    // شروع لودینگ
-                    isLoading = true;
-                    showPullToRefreshIndicator();
+                                canvas.addEventListener('mouseleave', () => {
+                                    tooltip.classList.remove('visible');
+                                });
 
-                    // فراخوانی fetch و سپس پنهان کردن
-                    fetchData().then(() => {
-                        // منتظر کمی بمانید برای نمایش خوب انیمیشن
-                        setTimeout(() => {
-                            hidePullToRefreshIndicator();
-                            isLoading = false;
-                        }, 300);
-                    }).catch(() => {
-                        setTimeout(() => {
-                            hidePullToRefreshIndicator();
-                            isLoading = false;
-                        }, 300);
-                    });
-                } else {
-                    // اگر کافی کشیده نشود، پنهان کنید
-                    hidePullToRefreshIndicator();
-                }
-            }
-            isPulling = false;
-        }, { passive: true });
+                                // Touch support for mobile
+                                canvas.addEventListener('touchmove', (e) => {
+                                    const touch = e.touches[0];
+                                    const rect = canvas.getBoundingClientRect();
+                                    const x = touch.clientX - rect.left;
+                                    const y = touch.clientY - rect.top;
 
-        // Auto Refresh Every Minute
-        setInterval(fetchData, 60000);
-    </script>
+                                    const canvasPosition = Chart.helpers.getRelativePosition(touch, chart);
+                                    const dataX = chart.scales.x.getValueForPixel(canvasPosition.x);
+                                    let closestIndex = Math.round(dataX);
+                                    closestIndex = Math.max(0, Math.min(closestIndex, sortedData.length - 1));
+
+                                    if (closestIndex >= 0 && closestIndex < sortedData.length) {
+                                        const data = sortedData[closestIndex];
+                                        const price = parseFloat(data.price);
+                                        const change = parseFloat(data.change_percent);
+                                        const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
+
+                                        tooltip.innerHTML = `
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-label">⏰ وقت:</span>
+                            <span class="chart-tooltip-value">${data.date} ${data.time}</span>
+                        </div>
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-label">💰 قیمت:</span>
+                            <span class="chart-tooltip-value">${formatPrice(price)}</span>
+                        </div>
+                        <div class="chart-tooltip-row">
+                            <span class="chart-tooltip-label">📊 تغییر:</span>
+                            <span class="chart-tooltip-value">${changeIcon} ${change > 0 ? '+' : ''}${change.toFixed(2)}%</span>
+                        </div>
+                    `;
+
+                                        tooltip.style.left = (x + 10) + 'px';
+                                        tooltip.style.top = (y - 80) + 'px';
+                                        tooltip.classList.add('visible');
+                                    }
+                                });
+
+                                canvas.addEventListener('touchend', () => {
+                                    tooltip.classList.remove('visible');
+                                });
+                            }
+
+                            // Handle Chart Type Button Clicks
+                            // ===== Dropdown Functions =====
+                            function toggleChartTypeDropdown() {
+                                const dropdown = document.getElementById('chartTypeDropdown');
+                                const toggle = document.getElementById('chartTypeToggle');
+                                dropdown.classList.toggle('active');
+                                toggle.classList.toggle('active');
+                                closeTimeframeDropdown();
+                            }
+
+                            function toggleTimeframeDropdown() {
+                                const dropdown = document.getElementById('timeframeDropdown');
+                                const toggle = document.getElementById('timeframeToggle');
+                                dropdown.classList.toggle('active');
+                                toggle.classList.toggle('active');
+                                closeChartTypeDropdown();
+                            }
+
+                            function closeChartTypeDropdown() {
+                                const dropdown = document.getElementById('chartTypeDropdown');
+                                const toggle = document.getElementById('chartTypeToggle');
+                                dropdown.classList.remove('active');
+                                toggle.classList.remove('active');
+                            }
+
+                            function closeTimeframeDropdown() {
+                                const dropdown = document.getElementById('timeframeDropdown');
+                                const toggle = document.getElementById('timeframeToggle');
+                                dropdown.classList.remove('active');
+                                toggle.classList.remove('active');
+                            }
+
+                            function selectChartType(type) {
+                                chartState.currentChartType = type;
+                                document.getElementById('chartTypeLabel').textContent =
+                                    document.querySelector(`[data-type="${type}"]`).textContent;
+
+                                document.querySelectorAll('#chartTypeDropdown .dropdown-item').forEach(item => {
+                                    item.classList.remove('active');
+                                    if (item.getAttribute('data-type') === type) {
+                                        item.classList.add('active');
+                                    }
+                                });
+
+                                closeChartTypeDropdown();
+                                if (chartState.historicalData.length > 0) {
+                                    renderChart(chartState.historicalData, chartState.currentSymbol, chartState.currentName);
+                                }
+                            }
+
+                            function selectTimeframe(timeframe) {
+                                chartState.currentTimeframe = timeframe;
+                                const timeframeLabels = {
+                                    '1m': '1د', '3m': '3د', '5m': '5د', '15m': '15د', '30m': '30د', '45m': '45د',
+                                    '1h': '1س', '2h': '2س', '3h': '3س', '4h': '4س',
+                                    '1d': '1ر', '1w': '1ه', '1mo': '1م', '3mo': '3م', '6mo': '6م', '1y': '1س'
+                                };
+                                document.getElementById('timeframeLabel').textContent = timeframeLabels[timeframe] || timeframe;
+
+                                document.querySelectorAll('#timeframeDropdown .dropdown-item').forEach(item => {
+                                    item.classList.remove('active');
+                                    if (item.getAttribute('data-timeframe') === timeframe) {
+                                        item.classList.add('active');
+                                    }
+                                });
+
+                                closeTimeframeDropdown();
+
+                                // نمایش loading
+                                const chartContainer = document.querySelector('.chart-container');
+                                chartContainer.innerHTML = `
+                                    <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
+                                        <div style="width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                                        <p style="color: #999; font-size: 14px;">در حال بارگذاری نمودار...</p>
+                                    </div>
+                                `;
+
+                                // بارگذاری داده‌های جدید
+                                fetchHistoryData(chartState.currentSymbol);
+                            }
+
+                            // ===== Zoom Functions =====
+                            let currentZoom = 1;
+
+                            function zoomChart(factor) {
+                                currentZoom *= factor;
+                                currentZoom = Math.max(0.5, Math.min(2.5, currentZoom)); // حداقل 0.5x و حداکثر 2.5x
+                                applyZoom();
+                            }
+
+                            function resetZoom() {
+                                currentZoom = 1;
+                                applyZoom();
+                            }
+
+                            function applyZoom() {
+                                const canvas = document.getElementById('priceChart');
+                                if (canvas) {
+                                    canvas.style.transform = `scale(${currentZoom})`;
+                                    canvas.style.transformOrigin = 'center top';
+                                }
+
+                                const zoomLevel = document.getElementById('zoomLevel');
+                                zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+                            }
+
+                            // Close dropdowns when clicking outside
+                            document.addEventListener('click', (e) => {
+                                const chartTypeDropdown = document.getElementById('chartTypeDropdown');
+                                const timeframeDropdown = document.getElementById('timeframeDropdown');
+                                const chartTypeToggle = document.getElementById('chartTypeToggle');
+                                const timeframeToggle = document.getElementById('timeframeToggle');
+
+                                if (chartTypeDropdown && !chartTypeDropdown.parentElement.contains(e.target) &&
+                                    !chartTypeToggle.contains(e.target)) {
+                                    closeChartTypeDropdown();
+                                }
+
+                                if (timeframeDropdown && !timeframeDropdown.parentElement.contains(e.target) &&
+                                    !timeframeToggle.contains(e.target)) {
+                                    closeTimeframeDropdown();
+                                }
+                            });
+
+                            function setupChartTypeButtons() {
+                                // لا توجد حاجة - استخدام dropdown بدلاً من ذلك
+                            }
+
+                            // Handle Timeframe Button Clicks
+                            function setupTimeframeButtons() {
+                                // لا توجد حاجة - استخدام dropdown بدلاً من ذلك
+                            }
+
+                            // Clear Search Input
+                            function clearSearch() {
+                                const searchInput = document.getElementById('searchInput');
+                                const clearBtn = document.getElementById('searchClear');
+                                searchInput.value = '';
+                                clearBtn.classList.remove('visible');
+                                filterAndRender();
+                                searchInput.focus();
+                            }
+
+                            // Event Listeners
+                            document.getElementById('searchInput').addEventListener('input', (e) => {
+                                const clearBtn = document.getElementById('searchClear');
+                                if (e.target.value.length > 0) {
+                                    clearBtn.classList.add('visible');
+                                } else {
+                                    clearBtn.classList.remove('visible');
+                                }
+                                filterAndRender();
+                            });
+
+                            // Close Modal on Outside Click
+                            document.getElementById('chartModal').addEventListener('click', (e) => {
+                                if (e.target.id === 'chartModal') {
+                                    closeChartModal();
+                                }
+                            });
+
+                            // Close Modal on Escape Key
+                            document.addEventListener('keydown', (e) => {
+                                if (e.key === 'Escape' && document.getElementById('chartModal').classList.contains('active')) {
+                                    closeChartModal();
+                                }
+                            });
+
+                            // Initial Load
+                            fetchData();
+                            updateNavDateTime();
+                            loadDarkModePreference();
+                            setInterval(updateNavDateTime, 60000);
+
+                            // Set initial theme indicator for nav tabs
+                            document.querySelectorAll('.nav-tab').forEach((tab, index) => {
+                                if (index === 0) {
+                                    tab.classList.add('active');
+                                } else {
+                                    tab.classList.remove('active');
+                                }
+                            });
+
+                            // Update indicator on initial load (with skipTransition) and window resize
+                            setTimeout(() => updateIndicator(true), 0);
+                            window.addEventListener('resize', () => updateIndicator(false));
+
+                            // غیرفعال کردن تمام تعاملات روی عکس‌ها
+                            document.addEventListener('contextmenu', (e) => {
+                                if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                                    e.preventDefault();
+                                    return false;
+                                }
+                            }, true);
+
+                            document.addEventListener('mousedown', (e) => {
+                                if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                                    e.preventDefault();
+                                    return false;
+                                }
+                            }, true);
+
+                            document.addEventListener('dragstart', (e) => {
+                                if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                                    e.preventDefault();
+                                    return false;
+                                }
+                            }, true);
+
+                            document.addEventListener('dragover', (e) => {
+                                if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                                    e.preventDefault();
+                                    return false;
+                                }
+                            }, true);
+
+                            // Pull to Refresh for Mobile - بهبود‌شده
+                            let pullStartY = 0;
+                            let isPulling = false;
+                            let isLoading = false;
+                            const pullThreshold = 80;
+                            let pullDistance = 0;
+
+                            function showPullToRefreshIndicator() {
+                                const container = document.getElementById('pullToRefreshContainer');
+                                const indicator = document.getElementById('pullToRefreshIndicator');
+                                if (container && indicator && !isLoading) {
+                                    container.classList.add('refreshing');
+                                    indicator.classList.add('active');
+                                }
+                            }
+
+                            function hidePullToRefreshIndicator() {
+                                const container = document.getElementById('pullToRefreshContainer');
+                                const indicator = document.getElementById('pullToRefreshIndicator');
+                                if (container && indicator) {
+                                    indicator.classList.remove('active');
+                                    setTimeout(() => {
+                                        container.classList.remove('refreshing');
+                                    }, 300);
+                                }
+                            }
+
+                            function hideSearchAndCardsForRefresh() {
+                                const searchContainer = document.querySelector('.search-container');
+                                const priceGrid = document.getElementById('priceGrid');
+                                if (searchContainer) searchContainer.classList.add('hidden');
+                                if (priceGrid) priceGrid.style.opacity = '0';
+                            }
+
+                            function showSearchAndCardsAfterRefresh() {
+                                const searchContainer = document.querySelector('.search-container');
+                                const priceGrid = document.getElementById('priceGrid');
+                                if (searchContainer) searchContainer.classList.remove('hidden');
+                                if (priceGrid) {
+                                    priceGrid.style.opacity = '1';
+                                    priceGrid.style.transition = 'opacity 0.5s ease';
+                                    setTimeout(() => {
+                                        if (priceGrid) priceGrid.style.transition = 'none';
+                                    }, 500);
+                                }
+                            }
+
+                            document.addEventListener('touchstart', (e) => {
+                                if (window.pageYOffset === 0) {
+                                    pullStartY = e.touches[0].clientY;
+                                    isPulling = true;
+                                    pullDistance = 0;
+                                }
+                            }, { passive: true });
+
+                            document.addEventListener('touchmove', (e) => {
+                                if (isPulling && window.pageYOffset === 0 && !isLoading) {
+                                    pullDistance = e.touches[0].clientY - pullStartY;
+
+                                    if (pullDistance > 0) {
+                                        // نمایش indicator هنگام کشیدن
+                                        if (pullDistance > pullThreshold / 2) {
+                                            showPullToRefreshIndicator();
+                                        }
+                                    }
+                                }
+                            }, { passive: true });
+
+                            document.addEventListener('touchend', (e) => {
+                                if (isPulling && !isLoading) {
+                                    if (pullDistance > pullThreshold) {
+                                        // شروع لودینگ
+                                        isLoading = true;
+                                        hideSearchAndCardsForRefresh();
+                                        showPullToRefreshIndicator();
+
+                                        // فراخوانی fetch و سپس پنهان کردن
+                                        fetchData().then(() => {
+                                            // منتظر کمی برای انیمیشن
+                                            setTimeout(() => {
+                                                showSearchAndCardsAfterRefresh();
+                                                setTimeout(() => {
+                                                    hidePullToRefreshIndicator();
+                                                    isLoading = false;
+                                                }, 500);
+                                            }, 200);
+                                        }).catch(() => {
+                                            setTimeout(() => {
+                                                showSearchAndCardsAfterRefresh();
+                                                setTimeout(() => {
+                                                    hidePullToRefreshIndicator();
+                                                    isLoading = false;
+                                                }, 500);
+                                            }, 200);
+                                        });
+                                    } else {
+                                        // اگر کافی کشیده نشود، پنهان کنید
+                                        hidePullToRefreshIndicator();
+                                    }
+                                }
+                                isPulling = false;
+                                pullDistance = 0;
+                            }, { passive: true });
+
+                            // Auto Refresh Every Minute
+                            setInterval(fetchData, 60000);
+
+                            // Initialize chart controls when modal is shown
+                            const chartModal = document.getElementById('chartModal');
+                            const originalShowChart = window.openChartModal;
+
+                            // Ensure chart controls are set up on first use
+                            setTimeout(() => {
+                                setupChartTypeButtons();
+                                setupTimeframeButtons();
+                            }, 100);
+                        </script>
 </body>
 
 </html>
