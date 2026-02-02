@@ -849,6 +849,53 @@
             background: linear-gradient(90deg, #667eea, #764ba2);
         }
 
+        /* ===== Pull to Refresh Indicator ===== */
+        .pull-to-refresh-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 998;
+            pointer-events: none;
+        }
+
+        .pull-to-refresh {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .pull-to-refresh.active {
+            opacity: 1;
+        }
+
+        .pull-to-refresh-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(102, 126, 234, 0.3);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin-fast 0.8s linear infinite;
+        }
+
+        body.dark-mode .pull-to-refresh-spinner {
+            border-color: rgba(125, 211, 255, 0.3);
+            border-top-color: #7dd3ff;
+        }
+
+        @keyframes spin-fast {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
         .skeleton-element {
             background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
             background-size: 200% 100%;
@@ -960,6 +1007,13 @@
 </head>
 
 <body>
+    <!-- Pull to Refresh Indicator -->
+    <div class="pull-to-refresh-container">
+        <div class="pull-to-refresh" id="pullToRefreshIndicator">
+            <div class="pull-to-refresh-spinner"></div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <div class="header">
@@ -1079,6 +1133,98 @@
                 // نمایش بدون اعشار + separator برای ارزهای بزرگ
                 return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
             }
+        }
+
+        // Load Icon with Retry Logic - بهتر شده
+        function loadIconWithFallback(iconPath, symbol) {
+            if (!iconPath) {
+                return createSymbolFallback(symbol);
+            }
+
+            const uniqueId = `icon-${symbol.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+            return `<div id="${uniqueId}" class="icon-container" data-symbol="${symbol}" data-path="${iconPath}" style="width: 50px; height: 50px; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: transparent;">
+                <img src="https://brsapi.ir/Api/Market/GCC/Icon/256x256/${iconPath}" 
+                     alt="${symbol}" 
+                     class="card-icon-img"
+                     data-symbol="${symbol}"
+                     data-icon-path="${iconPath}"
+                     style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none; display: block;"
+                     draggable="false">
+            </div>`;
+        }
+
+        // Create Symbol Fallback
+        function createSymbolFallback(symbol) {
+            return `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word; overflow: hidden;">${symbol.substring(0, 6)}</div>`;
+        }
+
+        // Setup Image Error Handlers
+        function setupImageErrorHandlers() {
+            const images = document.querySelectorAll('.card-icon-img');
+            images.forEach(img => {
+                if (img.__handlersSetup) return; // تا دوبار اجرا نشود
+                img.__handlersSetup = true;
+
+                const symbol = img.getAttribute('data-symbol');
+                const iconPath = img.getAttribute('data-icon-path');
+                const wrapper = img.parentElement;
+
+                // اگر عکس قبلاً لوڈ شده باشد
+                if (img.complete) {
+                    if (img.naturalHeight === 0) {
+                        // عکس خراب است
+                        tryNextSize(img, iconPath, wrapper, symbol);
+                    }
+                }
+
+                // برای عکس‌های جدید
+                img.addEventListener('load', function () {
+                    this.style.display = 'block';
+                });
+
+                img.addEventListener('error', function () {
+                    tryNextSize(this, iconPath, wrapper, symbol);
+                });
+            });
+        }
+
+        // Try Next Image Size
+        function tryNextSize(img, iconPath, wrapper, symbol) {
+            const currentSrc = img.src;
+            let nextSize = '256x256';
+
+            if (currentSrc.includes('256x256')) {
+                nextSize = '128x128';
+            } else if (currentSrc.includes('128x128')) {
+                nextSize = '64x64';
+            } else {
+                // تمام سایز‌ها ناموفق - نمایش fallback
+                wrapper.innerHTML = createSymbolFallback(symbol);
+                return;
+            }
+
+            // تلاش برای سایز بعدی
+            const newSrc = `https://brsapi.ir/Api/Market/GCC/Icon/${nextSize}/${iconPath}`;
+            const newImg = document.createElement('img');
+            newImg.src = newSrc;
+            newImg.alt = symbol;
+            newImg.className = 'card-icon-img';
+            newImg.setAttribute('data-symbol', symbol);
+            newImg.setAttribute('data-icon-path', iconPath);
+            newImg.style.cssText = img.style.cssText;
+            newImg.draggable = false;
+
+            newImg.addEventListener('load', function () {
+                this.style.display = 'block';
+                img.replaceWith(this);
+            });
+
+            newImg.addEventListener('error', function () {
+                tryNextSize(this, iconPath, wrapper, symbol);
+            });
+
+            img.replaceWith(newImg);
         }
 
         // Format Time
@@ -1318,6 +1464,11 @@
                 const card = createPriceCard(item);
                 grid.appendChild(card);
             });
+
+            // Setup image error handlers بعد از رندر
+            setTimeout(() => {
+                setupImageErrorHandlers();
+            }, 0);
         }
 
         // Create Price Card Element
@@ -1332,9 +1483,7 @@
             // ساخت آدرس آیکن از API (از path_icon در پاسخ API)
             let iconElement = '';
             if (item.path_icon) {
-                // استفاده از آدرس پایه ثابت + path_icon
-                const iconUrl = `https://brsapi.ir/Api/Market/GCC/Icon/256x256/${item.path_icon}`;
-                iconElement = `<img src="${iconUrl}" alt="${item.symbol}" style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none;" draggable="false" onerror="this.parentElement.innerHTML='<div style=&quot;width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;&quot;>${item.symbol}</div>'">`;
+                iconElement = loadIconWithFallback(item.path_icon, item.symbol);
             } else if (item.symbol) {
                 // Fallback: نمایش symbol به صورت متنی اگر icon موجود نباشد
                 iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">${item.symbol}</div>`;
@@ -1691,30 +1840,75 @@
             }
         }, true);
 
-        // Pull to Refresh for Mobile
+        // Pull to Refresh for Mobile - بهبود‌شده
         let pullStartY = 0;
         let isPulling = false;
+        let isLoading = false;
+        const pullThreshold = 80;
+
+        function showPullToRefreshIndicator() {
+            const indicator = document.getElementById('pullToRefreshIndicator');
+            if (indicator && !isLoading) {
+                indicator.classList.add('active');
+            }
+        }
+
+        function hidePullToRefreshIndicator() {
+            const indicator = document.getElementById('pullToRefreshIndicator');
+            if (indicator) {
+                indicator.classList.remove('active');
+            }
+        }
 
         document.addEventListener('touchstart', (e) => {
             if (window.pageYOffset === 0) {
                 pullStartY = e.touches[0].clientY;
                 isPulling = true;
             }
-        });
+        }, { passive: true });
 
         document.addEventListener('touchmove', (e) => {
-            if (isPulling && window.pageYOffset === 0) {
+            if (isPulling && window.pageYOffset === 0 && !isLoading) {
                 const pullDistance = e.touches[0].clientY - pullStartY;
-                if (pullDistance > 80) {
-                    fetchData();
-                    isPulling = false;
+
+                if (pullDistance > 0) {
+                    // نمایش indicator هنگام کشیدن
+                    if (pullDistance > pullThreshold / 2) {
+                        showPullToRefreshIndicator();
+                    }
                 }
             }
-        });
+        }, { passive: true });
 
-        document.addEventListener('touchend', () => {
+        document.addEventListener('touchend', (e) => {
+            if (isPulling && !isLoading) {
+                const pullDistance = e.changedTouches[0].clientY - pullStartY;
+
+                if (pullDistance > pullThreshold) {
+                    // شروع لودینگ
+                    isLoading = true;
+                    showPullToRefreshIndicator();
+
+                    // فراخوانی fetch و سپس پنهان کردن
+                    fetchData().then(() => {
+                        // منتظر کمی بمانید برای نمایش خوب انیمیشن
+                        setTimeout(() => {
+                            hidePullToRefreshIndicator();
+                            isLoading = false;
+                        }, 300);
+                    }).catch(() => {
+                        setTimeout(() => {
+                            hidePullToRefreshIndicator();
+                            isLoading = false;
+                        }, 300);
+                    });
+                } else {
+                    // اگر کافی کشیده نشود، پنهان کنید
+                    hidePullToRefreshIndicator();
+                }
+            }
             isPulling = false;
-        });
+        }, { passive: true });
 
         // Auto Refresh Every Minute
         setInterval(fetchData, 60000);
