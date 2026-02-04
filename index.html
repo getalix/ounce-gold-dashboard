@@ -1360,6 +1360,9 @@
             display: none;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 250px;
+            word-wrap: break-word;
+            white-space: nowrap;
         }
 
         .chart-tooltip.visible {
@@ -1672,13 +1675,6 @@
                     }
 
                     const uniqueId = `icon-${symbol.replace(/[^a-zA-Z0-9]/g, '_')}`;
-                    const isInMiniApp = isTelegramMiniApp();
-
-                    // اگر در Mini App هستیم، بلافاصله fallback استفاده کنیم
-                    if (isInMiniApp) {
-                        console.warn(`⚠️ Mini App detected - using fallback for ${symbol}`);
-                        return createSymbolFallback(symbol);
-                    }
 
                     // آدرس‌های متعدد برای تلاش مجدد - طبق فرمت API: {url_base_icon}/{size}/{path_icon}
                     const sizes = ['256x256', '128x128', '64x64', '32x32'];
@@ -1757,6 +1753,11 @@
 
                 // Setup Image Error Handlers - بهبود‌شده برای Mini App
                 function setupImageErrorHandlers() {
+                    const isInMiniApp = isTelegramMiniApp();
+                    if (isInMiniApp) {
+                        console.log(`📱 Mini App تشخیص داده شد - timeout برای آیکون‌ها افزایش یافت`);
+                    }
+
                     const images = document.querySelectorAll('.card-icon-img');
                     images.forEach(img => {
                         if (img.__handlersSetup) return; // تا دوبار اجرا نشود
@@ -1786,6 +1787,7 @@
                         });
 
                         // Timeout برای مواقع آفلاین یا بسیار کند
+                        const timeoutDelay = isTelegramMiniApp() ? 8000 : 5000;
                         setTimeout(() => {
                             if (!img.__handlersSetup || img.__timeoutChecked) return;
                             img.__timeoutChecked = true;
@@ -1793,7 +1795,7 @@
                             if (!img.complete || (img.naturalHeight === 0 && img.naturalWidth === 0)) {
                                 tryNextSize(img, iconPath, wrapper, symbol, 0);
                             }
-                        }, 5000);
+                        }, timeoutDelay);
                     });
                 }
 
@@ -1824,12 +1826,13 @@
                     newImg.draggable = false;
                     newImg.crossOrigin = 'anonymous';
 
+                    const timeoutDelay = isTelegramMiniApp() ? 5000 : 3000;
                     const loadTimeout = setTimeout(() => {
-                        // اگر بعد از 3 ثانیه لود نشد، سراغ سایز بعدی
+                        // اگر بعد از تعیین شده لود نشد، سراغ سایز بعدی
                         if (!newImg.complete) {
                             tryNextSize(newImg, iconPath, wrapper, symbol, attemptCount + 1);
                         }
-                    }, 3000);
+                    }, timeoutDelay);
 
                     newImg.addEventListener('load', function () {
                         clearTimeout(loadTimeout);
@@ -2864,12 +2867,31 @@
                         </div>
                         <div class="chart-tooltip-row">
                             <span class="chart-tooltip-label">📊 تغییر:</span>
-                            <span class="chart-tooltip-value">${changeIcon} ${change > 0 ? '+' : ''}${change.toFixed(2)}%</span>
+                            <span class="chart-tooltip-value">${change >= 0 ? '+' : ''}${change.toFixed(2)}% ${changeIcon}</span>
                         </div>
                     `;
 
-                            tooltip.style.left = (x + 10) + 'px';
-                            tooltip.style.top = (y - 80) + 'px';
+                            // Calculate tooltip position with boundary checks
+                            let posX = x + 20;
+                            let posY = y - 80;
+
+                            // Check right boundary (tooltip width ~250px)
+                            if (posX + 250 > container.clientWidth) {
+                                posX = Math.max(5, x - 250 - 10);
+                            }
+
+                            // Check top boundary
+                            if (posY < 0) {
+                                posY = y + 10;
+                            }
+
+                            // Check bottom boundary (tooltip height ~100px)
+                            if (posY + 100 > container.clientHeight) {
+                                posY = Math.max(5, container.clientHeight - 100 - 10);
+                            }
+
+                            tooltip.style.left = Math.max(5, posX) + 'px';
+                            tooltip.style.top = Math.max(5, posY) + 'px';
                             tooltip.classList.add('visible');
                         }
                     });
@@ -2907,12 +2929,31 @@
                         </div>
                         <div class="chart-tooltip-row">
                             <span class="chart-tooltip-label">📊 تغییر:</span>
-                            <span class="chart-tooltip-value">${changeIcon} ${change > 0 ? '+' : ''}${change.toFixed(2)}%</span>
+                            <span class="chart-tooltip-value">${change >= 0 ? '+' : ''}${change.toFixed(2)}% ${changeIcon}</span>
                         </div>
                     `;
 
-                            tooltip.style.left = (x + 10) + 'px';
-                            tooltip.style.top = (y - 80) + 'px';
+                            // Calculate tooltip position with boundary checks
+                            let posX = x + 20;
+                            let posY = y - 80;
+
+                            // Check right boundary (tooltip width ~250px)
+                            if (posX + 250 > container.clientWidth) {
+                                posX = Math.max(5, x - 250 - 10);
+                            }
+
+                            // Check top boundary
+                            if (posY < 0) {
+                                posY = y + 10;
+                            }
+
+                            // Check bottom boundary (tooltip height ~100px)
+                            if (posY + 100 > container.clientHeight) {
+                                posY = Math.max(5, container.clientHeight - 100 - 10);
+                            }
+
+                            tooltip.style.left = Math.max(5, posX) + 'px';
+                            tooltip.style.top = Math.max(5, posY) + 'px';
                             tooltip.classList.add('visible');
                         }
                     });
