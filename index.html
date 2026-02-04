@@ -2391,16 +2391,16 @@
                         });
 
                         // فیلتر کریں فقط برای history=2 (روزی داده)
-                        // برای history=1 (24h)، تمام داده‌ها را نگاه دار
+                        // برای history=1 (24h)، فیلتر کن اگر timeframe = 1d نباشد (دقیقی/ساعاتی)
                         if (historyType === 2) {
                             processedData = filterDataByTimeframe(processedData, timeframe);
                             console.log(`✅ فیلتر شده برای ${timeframe} (روزی): ${processedData.length} رکورد`);
-                        } else if (historyType === 1 && !['1d', '1m', '3m', '5m', '15m', '30m', '45m', '1h', '2h', '3h', '4h'].includes(timeframe)) {
-                            // برای history=1 اگر timeframe معلوم نیست، فیلتر کن
+                        } else if (historyType === 1 && timeframe !== '1d') {
+                            // برای history=1 و timeframe غیر از 1d، فیلتر کن
                             processedData = filterDataByTimeframe(processedData, timeframe);
-                            console.log(`✅ فیلتر شده برای ${timeframe} (دقیقی): ${processedData.length} رکورد`);
+                            console.log(`✅ فیلتر شده برای ${timeframe} (دقیقی/ساعاتی): ${processedData.length} رکورد`);
                         } else {
-                            console.log(`✅ داده‌های ${timeframe}: ${processedData.length} رکورد (فیلتر نشده)`);
+                            console.log(`✅ داده‌های ${timeframe}: ${processedData.length} رکورد (بدون فیلتر)`);
                         }
 
                         chartState.historicalData = processedData;
