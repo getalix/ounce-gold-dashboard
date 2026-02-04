@@ -1675,16 +1675,15 @@
                     }
 
                     const uniqueId = `icon-${symbol.replace(/[^a-zA-Z0-9]/g, '_')}`;
-                    const proxyUrl = 'https://ons-gold-tg.panytb.workers.dev/';
 
                     // آدرس‌های متعدد برای تلاش مجدد - طبق فرمت API: {url_base_icon}/{size}/{path_icon}
                     const sizes = ['256x256', '128x128', '64x64', '32x32'];
-                    const iconUrls = sizes.map(size => `${proxyUrl}${urlBaseIcon}/${size}/${iconPath}`);
+                    const iconUrls = sizes.map(size => `${urlBaseIcon}/${size}/${iconPath}`);
 
                     // استفاده اولی: 128x128 برای موبایل و 256x256 برای دسکتاپ
                     const isMobile = window.innerWidth <= 768;
                     const initialSize = isMobile ? '128x128' : '256x256';
-                    const corsProxyUrl = `${proxyUrl}${urlBaseIcon}/${initialSize}/${iconPath}`;
+                    const corsProxyUrl = `${urlBaseIcon}/${initialSize}/${iconPath}`;
 
                     return `<div id="${uniqueId}" class="icon-container" data-symbol="${symbol}" data-path="${iconPath}" style="width: 50px; height: 50px; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: transparent;">
                 <img src="${corsProxyUrl}" 
@@ -1693,7 +1692,6 @@
                      data-symbol="${symbol}"
                      data-icon-path="${iconPath}"
                      data-base-url="${urlBaseIcon}"
-                     data-proxy-url="${proxyUrl}"
                      data-urls='${JSON.stringify(iconUrls)}'
                      style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none; display: block;"
                      draggable="false"
@@ -1817,7 +1815,6 @@
                     const sizes = ['256x256', '128x128', '64x64', '32x32'];
                     const maxAttempts = sizes.length;
                     const baseUrl = img.getAttribute('data-base-url') || 'https://brsapi.ir/Api/Market/GCC/Icon';
-                    const proxyUrl = img.getAttribute('data-proxy-url') || 'https://ons-gold-tg.panytb.workers.dev/';
 
                     console.log(`🔄 تلاش ${attemptCount + 1}/${maxAttempts} برای بارگذاری آیکون ${symbol} (سایز: ${sizes[attemptCount]})`);
 
@@ -1829,10 +1826,9 @@
                     }
 
                     const nextSize = sizes[attemptCount];
-                    // طبق فرمت API: {url_base_icon}/{size}/{path_icon} - از طریق Cloudflare Worker proxy
-                    const originalUrl = `${baseUrl}/${nextSize}/${iconPath}`;
-                    const newSrc = `${proxyUrl}${originalUrl}`;
-                    console.log(`📥 درخواست (Proxy): ${newSrc}`);
+                    // طبق فرمت API: {url_base_icon}/{size}/{path_icon}
+                    const newSrc = `${baseUrl}/${nextSize}/${iconPath}`;
+                    console.log(`📥 درخواست: ${newSrc}`);
 
                     const newImg = document.createElement('img');
                     newImg.src = newSrc;
@@ -1841,7 +1837,6 @@
                     newImg.setAttribute('data-symbol', symbol);
                     newImg.setAttribute('data-icon-path', iconPath);
                     newImg.setAttribute('data-base-url', baseUrl);
-                    newImg.setAttribute('data-proxy-url', proxyUrl);
                     newImg.style.cssText = img.style.cssText;
                     newImg.draggable = false;
                     newImg.crossOrigin = 'anonymous';
@@ -2005,24 +2000,27 @@
                         const data = await response.json();
 
                         if (data.successful) {
+                            // Store url_base_icon from API
+                            const urlBaseIcon = data.url_base_icon || 'https://brsapi.ir/Api/Market/GCC/Icon';
+
                             // Process Gold Data
                             if (data.gold) {
                                 allData.gold = [
-                                    ...data.gold.ounce.map(item => ({ ...item, type: 'gold', category: 'ounce' })),
-                                    ...data.gold.type.map(item => ({ ...item, type: 'gold', category: 'type' })),
-                                    ...data.gold.coin.map(item => ({ ...item, type: 'gold', category: 'coin' })),
-                                    ...data.gold.coin_parsian.map(item => ({ ...item, type: 'gold', category: 'coin_parsian' }))
+                                    ...data.gold.ounce.map(item => ({ ...item, type: 'gold', category: 'ounce', url_base_icon: urlBaseIcon })),
+                                    ...data.gold.type.map(item => ({ ...item, type: 'gold', category: 'type', url_base_icon: urlBaseIcon })),
+                                    ...data.gold.coin.map(item => ({ ...item, type: 'gold', category: 'coin', url_base_icon: urlBaseIcon })),
+                                    ...data.gold.coin_parsian.map(item => ({ ...item, type: 'gold', category: 'coin_parsian', url_base_icon: urlBaseIcon }))
                                 ];
                             }
 
                             // Process Currency Data
                             if (data.currency && data.currency.free) {
-                                allData.currency = data.currency.free.map(item => ({ ...item, type: 'currency' }));
+                                allData.currency = data.currency.free.map(item => ({ ...item, type: 'currency', url_base_icon: urlBaseIcon }));
                             }
 
                             // Process Crypto Data
                             if (data.cryptocurrency) {
-                                allData.cryptocurrency = data.cryptocurrency.map(item => ({ ...item, type: 'crypto' }));
+                                allData.cryptocurrency = data.cryptocurrency.map(item => ({ ...item, type: 'crypto', url_base_icon: urlBaseIcon }));
                             }
 
                             // Update Filter and Render
