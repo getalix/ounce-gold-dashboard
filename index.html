@@ -1614,55 +1614,6 @@
                             navigator.userAgent.includes('Telegram'));
                 };
 
-                // Enable Right-Click for Console Debugging
-                document.addEventListener('contextmenu', (e) => {
-                    console.log('✅ کلیک راست فعال است - میتوان Console را باز کرد');
-                    // بدون preventDefault - کلیک راست آزاد باشد
-                }, { passive: true });
-
-                // Create Debug Console Panel for Mini App
-                const debugPanel = document.createElement('div');
-                debugPanel.id = 'debug-console';
-                debugPanel.style.cssText = `
-                    position: fixed;
-                    bottom: 160px;
-                    right: 10px;
-                    width: 300px;
-                    max-height: 300px;
-                    background: rgba(0, 0, 0, 0.9);
-                    border: 2px solid #667eea;
-                    border-radius: 8px;
-                    padding: 10px;
-                    color: #00ff00;
-                    font-family: 'Courier New', monospace;
-                    font-size: 11px;
-                    overflow-y: auto;
-                    z-index: 9999;
-                    display: none;
-                    line-height: 1.4;
-                `;
-                document.body.appendChild(debugPanel);
-
-                // Override console.log to also display in debug panel
-                const originalLog = console.log;
-                console.log = function (...args) {
-                    originalLog.apply(console, args);
-                    const message = args.map(arg =>
-                        typeof arg === 'string' ? arg : JSON.stringify(arg)
-                    ).join(' ');
-                    const timestamp = new Date().toLocaleTimeString('fa-IR');
-                    debugPanel.innerHTML += `<div>[${timestamp}] ${message}</div>`;
-                    debugPanel.scrollTop = debugPanel.scrollHeight;
-                };
-
-                // Toggle debug panel with Ctrl+D
-                document.addEventListener('keydown', (e) => {
-                    if (e.ctrlKey && e.key === 'd') {
-                        e.preventDefault();
-                        debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
-                    }
-                });
-
                 // State
                 let allData = {
                     gold: [],
@@ -3230,6 +3181,8 @@
                 window.addEventListener('resize', () => updateIndicator(false));
 
                 // غیرفعال کردن تمام تعاملات روی عکس‌ها
+                // Context menu و Mouse down handler - غیرفعال شده برای اجازه inspect
+                /*
                 document.addEventListener('contextmenu', (e) => {
                     if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
                         e.preventDefault();
@@ -3243,6 +3196,7 @@
                         return false;
                     }
                 }, true);
+                */
 
                 document.addEventListener('dragstart', (e) => {
                     if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
