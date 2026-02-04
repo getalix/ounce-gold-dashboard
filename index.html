@@ -1669,21 +1669,22 @@
                 }
 
                 // Load Icon with Retry Logic - بهتر شده
-                function loadIconWithFallback(iconPath, symbol, urlBaseIcon = 'https://ons-gold-tg.panytb.workers.dev/Api/Market/GCC/Icon') {
+                function loadIconWithFallback(iconPath, symbol, urlBaseIcon = 'https://brsapi.ir/Api/Market/GCC/Icon') {
                     if (!iconPath) {
                         return createSymbolFallback(symbol);
                     }
 
                     const uniqueId = `icon-${symbol.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                    const proxyUrl = 'https://ons-gold-tg.panytb.workers.dev/';
 
                     // آدرس‌های متعدد برای تلاش مجدد - طبق فرمت API: {url_base_icon}/{size}/{path_icon}
                     const sizes = ['256x256', '128x128', '64x64', '32x32'];
-                    const iconUrls = sizes.map(size => `${urlBaseIcon}/${size}/${iconPath}`);
+                    const iconUrls = sizes.map(size => `${proxyUrl}${urlBaseIcon}/${size}/${iconPath}`);
 
                     // استفاده اولی: 128x128 برای موبایل و 256x256 برای دسکتاپ
                     const isMobile = window.innerWidth <= 768;
                     const initialSize = isMobile ? '128x128' : '256x256';
-                    const corsProxyUrl = `${urlBaseIcon}/${initialSize}/${iconPath}`;
+                    const corsProxyUrl = `${proxyUrl}${urlBaseIcon}/${initialSize}/${iconPath}`;
 
                     return `<div id="${uniqueId}" class="icon-container" data-symbol="${symbol}" data-path="${iconPath}" style="width: 50px; height: 50px; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: transparent;">
                 <img src="${corsProxyUrl}" 
@@ -1692,6 +1693,7 @@
                      data-symbol="${symbol}"
                      data-icon-path="${iconPath}"
                      data-base-url="${urlBaseIcon}"
+                     data-proxy-url="${proxyUrl}"
                      data-urls='${JSON.stringify(iconUrls)}'
                      style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none; display: block;"
                      draggable="false"
@@ -1814,7 +1816,8 @@
                 function tryNextSize(img, iconPath, wrapper, symbol, attemptCount = 0) {
                     const sizes = ['256x256', '128x128', '64x64', '32x32'];
                     const maxAttempts = sizes.length;
-                    const baseUrl = img.getAttribute('data-base-url') || 'https://ons-gold-tg.panytb.workers.dev/Api/Market/GCC/Icon';
+                    const baseUrl = img.getAttribute('data-base-url') || 'https://brsapi.ir/Api/Market/GCC/Icon';
+                    const proxyUrl = img.getAttribute('data-proxy-url') || 'https://ons-gold-tg.panytb.workers.dev/';
 
                     console.log(`🔄 تلاش ${attemptCount + 1}/${maxAttempts} برای بارگذاری آیکون ${symbol} (سایز: ${sizes[attemptCount]})`);
 
@@ -1826,9 +1829,10 @@
                     }
 
                     const nextSize = sizes[attemptCount];
-                    // طبق فرمت API: {url_base_icon}/{size}/{path_icon}
-                    const newSrc = `${baseUrl}/${nextSize}/${iconPath}`;
-                    console.log(`📥 درخواست: ${newSrc}`);
+                    // طبق فرمت API: {url_base_icon}/{size}/{path_icon} - از طریق Cloudflare Worker proxy
+                    const originalUrl = `${baseUrl}/${nextSize}/${iconPath}`;
+                    const newSrc = `${proxyUrl}${originalUrl}`;
+                    console.log(`📥 درخواست (Proxy): ${newSrc}`);
 
                     const newImg = document.createElement('img');
                     newImg.src = newSrc;
@@ -1837,6 +1841,7 @@
                     newImg.setAttribute('data-symbol', symbol);
                     newImg.setAttribute('data-icon-path', iconPath);
                     newImg.setAttribute('data-base-url', baseUrl);
+                    newImg.setAttribute('data-proxy-url', proxyUrl);
                     newImg.style.cssText = img.style.cssText;
                     newImg.draggable = false;
                     newImg.crossOrigin = 'anonymous';
@@ -2133,7 +2138,7 @@
                     // ساخت آدرس آیکن از API (از path_icon و url_base_icon در پاسخ API)
                     let iconElement = '';
                     if (item.path_icon) {
-                        const baseUrl = 'https://ons-gold-tg.panytb.workers.dev/Api/Market/GCC/Icon'; // استفاده از proxy Cloudflare
+                        const baseUrl = item.url_base_icon || 'https://brsapi.ir/Api/Market/GCC/Icon';
                         iconElement = loadIconWithFallback(item.path_icon, item.symbol, baseUrl);
                     } else if (item.symbol) {
                         // Fallback: نمایش symbol به صورت متنی اگر icon موجود نباشد
