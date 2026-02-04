@@ -1754,11 +1754,15 @@
                 // Setup Image Error Handlers - بهبود‌شده برای Mini App
                 function setupImageErrorHandlers() {
                     const isInMiniApp = isTelegramMiniApp();
+                    console.log(`🔍 setupImageErrorHandlers شروع - Mini App: ${isInMiniApp}`);
+
                     if (isInMiniApp) {
                         console.log(`📱 Mini App تشخیص داده شد - timeout برای آیکون‌ها افزایش یافت`);
                     }
 
                     const images = document.querySelectorAll('.card-icon-img');
+                    console.log(`📸 تعداد آیکون‌ها: ${images.length}`);
+
                     images.forEach(img => {
                         if (img.__handlersSetup) return; // تا دوبار اجرا نشود
                         img.__handlersSetup = true;
@@ -1767,22 +1771,28 @@
                         const iconPath = img.getAttribute('data-icon-path');
                         const wrapper = img.parentElement;
 
+                        console.log(`⚙️ تنظیم هندلر برای ${symbol} (مسیر: ${iconPath})`);
+
                         // اگر عکس قبلاً لوڈ شده باشد
                         if (img.complete) {
                             if (img.naturalHeight === 0 && img.naturalWidth === 0) {
                                 // عکس خراب است
+                                console.warn(`🔄 عکس ${symbol} خراب است - تلاش مجدد`);
                                 tryNextSize(img, iconPath, wrapper, symbol, 0);
                             } else {
+                                console.log(`✅ عکس ${symbol} قبلاً لوڈ شده`);
                                 img.style.display = 'block';
                             }
                         }
 
                         // برای عکس‌های جدید
                         img.addEventListener('load', function () {
+                            console.log(`✅ عکس ${symbol} بارگذاری شد`);
                             this.style.display = 'block';
                         });
 
                         img.addEventListener('error', function () {
+                            console.warn(`❌ خطا در بارگذاری ${symbol}`);
                             tryNextSize(this, iconPath, wrapper, symbol, 0);
                         });
 
@@ -1793,6 +1803,7 @@
                             img.__timeoutChecked = true;
 
                             if (!img.complete || (img.naturalHeight === 0 && img.naturalWidth === 0)) {
+                                console.warn(`⏱️ Timeout برای ${symbol} - تلاش مجدد`);
                                 tryNextSize(img, iconPath, wrapper, symbol, 0);
                             }
                         }, timeoutDelay);
@@ -1805,8 +1816,11 @@
                     const maxAttempts = sizes.length;
                     const baseUrl = img.getAttribute('data-base-url') || 'https://brsapi.ir/Api/Market/GCC/Icon';
 
+                    console.log(`🔄 تلاش ${attemptCount + 1}/${maxAttempts} برای بارگذاری آیکون ${symbol} (سایز: ${sizes[attemptCount]})`);
+
                     if (attemptCount >= maxAttempts) {
                         // تمام سایز‌ها ناموفق - نمایش fallback
+                        console.warn(`❌ تمام تلاش‌ها برای ${symbol} ناموفق بود - نمایش fallback`);
                         wrapper.innerHTML = createSymbolFallback(symbol);
                         return;
                     }
@@ -1814,6 +1828,7 @@
                     const nextSize = sizes[attemptCount];
                     // طبق فرمت API: {url_base_icon}/{size}/{path_icon}
                     const newSrc = `${baseUrl}/${nextSize}/${iconPath}`;
+                    console.log(`📥 درخواست: ${newSrc}`);
 
                     const newImg = document.createElement('img');
                     newImg.src = newSrc;
@@ -1830,12 +1845,14 @@
                     const loadTimeout = setTimeout(() => {
                         // اگر بعد از تعیین شده لود نشد، سراغ سایز بعدی
                         if (!newImg.complete) {
+                            console.warn(`⏱️ Timeout برای ${symbol} (سایز: ${nextSize})`);
                             tryNextSize(newImg, iconPath, wrapper, symbol, attemptCount + 1);
                         }
                     }, timeoutDelay);
 
                     newImg.addEventListener('load', function () {
                         clearTimeout(loadTimeout);
+                        console.log(`✅ آیکون ${symbol} بارگذاری شد (سایز: ${nextSize})`);
                         this.style.display = 'block';
                         if (img.parentElement) {
                             img.replaceWith(this);
@@ -1844,6 +1861,7 @@
 
                     newImg.addEventListener('error', function () {
                         clearTimeout(loadTimeout);
+                        console.warn(`⚠️ خطا در بارگذاری ${symbol} (سایز: ${nextSize})`);
                         tryNextSize(this, iconPath, wrapper, symbol, attemptCount + 1);
                     });
 
