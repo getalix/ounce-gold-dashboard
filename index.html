@@ -723,8 +723,10 @@
 
         @media (max-width: 768px) {
             .chart-container {
-                height: 300px;
+                height: 350px;
                 padding: 10px;
+                width: 100%;
+                box-sizing: border-box;
             }
 
             .price-grid {
@@ -746,11 +748,16 @@
 
             .modal-content {
                 padding: 20px;
+                width: 100%;
+                max-width: 100%;
+                max-height: 100vh;
+                border-radius: 12px;
             }
 
             .chart-container {
-                min-height: 300px;
-                max-height: 65vh;
+                min-height: 350px;
+                max-height: 60vh;
+                width: 100%;
             }
 
             .nav-tabs {
@@ -1285,100 +1292,41 @@
             font-weight: 600;
         }
 
-        /* ===== Zoom Controls ===== */
-        .zoom-controls {
-            min-width: auto;
-        }
-
-        .zoom-buttons {
-            display: flex;
-            gap: 5px;
-            align-items: center;
-        }
-
-        .zoom-btn {
-            width: 32px;
-            height: 32px;
-            border: 1px solid rgba(102, 126, 234, 0.3);
-            border-radius: 4px;
-            background: white;
-            color: #333;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body.dark-mode .zoom-btn {
-            background: #2d2d2d;
-            color: #e0e0e0;
-            border-color: rgba(125, 211, 255, 0.3);
-        }
-
-        .zoom-btn:hover {
-            border-color: #667eea;
-            background: #f8f9fa;
-        }
-
-        body.dark-mode .zoom-btn:hover {
-            background: #333;
-        }
-
-        .zoom-reset {
-            min-width: 50px;
-            width: auto;
-            padding: 0 8px;
-            font-size: 12px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border-color: transparent;
-        }
-
-        .zoom-reset:hover {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            border-color: transparent;
-        }
-
         /* ===== Responsive Chart Toolbar ===== */
         @media (max-width: 768px) {
             .chart-toolbar {
                 gap: 10px;
+                flex-wrap: nowrap;
             }
 
             .toolbar-group {
-                min-width: 120px;
+                min-width: auto;
+                flex: 1;
             }
 
             .dropdown-menu.active {
                 max-height: 400px;
             }
+
+            .toolbar-group label {
+                display: none;
+            }
         }
 
         @media (max-width: 480px) {
             .chart-toolbar {
-                flex-direction: column;
-                gap: 12px;
+                gap: 8px;
+                flex-wrap: nowrap;
             }
 
             .toolbar-group {
-                min-width: 100%;
-            }
-
-            .zoom-controls {
-                min-width: 100%;
-            }
-
-            .zoom-buttons {
-                width: 100%;
-                justify-content: space-between;
-            }
-
-            .zoom-btn {
+                min-width: auto;
                 flex: 1;
+            }
+
+            .dropdown-toggle {
+                padding: 8px 10px;
+                font-size: 12px;
             }
         }
 
@@ -1587,7 +1535,7 @@
                     <label>⏱️ بازه زمانی:</label>
                     <div class="dropdown-wrapper">
                         <button class="dropdown-toggle" id="timeframeToggle" onclick="toggleTimeframeDropdown()">
-                            <span id="timeframeLabel">5د</span>
+                            <span id="timeframeLabel">1ر</span>
                             <span class="dropdown-arrow">▼</span>
                         </button>
                         <div class="dropdown-menu" id="timeframeDropdown">
@@ -1604,8 +1552,7 @@
                                     دقیقه</button>
                                 <button class="dropdown-item" data-timeframe="30m" onclick="selectTimeframe('30m')">30
                                     دقیقه</button>
-                                <button class="dropdown-item active" data-timeframe="45m"
-                                    onclick="selectTimeframe('45m')">45
+                                <button class="dropdown-item" data-timeframe="45m" onclick="selectTimeframe('45m')">45
                                     دقیقه</button>
                             </div>
                             <!-- Hours -->
@@ -1623,7 +1570,8 @@
                             <!-- Days -->
                             <div class="dropdown-category">
                                 <div class="category-title">روز</div>
-                                <button class="dropdown-item" data-timeframe="1d" onclick="selectTimeframe('1d')">1
+                                <button class="dropdown-item active" data-timeframe="1d"
+                                    onclick="selectTimeframe('1d')">1
                                     روز</button>
                                 <button class="dropdown-item" data-timeframe="1w" onclick="selectTimeframe('1w')">1
                                     هفته</button>
@@ -1640,15 +1588,7 @@
                     </div>
                 </div>
 
-                <!-- Zoom Controls -->
-                <div class="toolbar-group zoom-controls">
-                    <label>🔍 بزرگ‌نمایی:</label>
-                    <div class="zoom-buttons">
-                        <button class="zoom-btn" onclick="zoomChart(0.8)" title="کوچک‌تر">−</button>
-                        <button class="zoom-btn zoom-reset" onclick="resetZoom()" id="zoomLevel">100%</button>
-                        <button class="zoom-btn" onclick="zoomChart(1.2)" title="بزرگ‌تر">+</button>
-                    </div>
-                </div>
+
             </div>
 
             <!-- Chart Container -->
@@ -1686,7 +1626,7 @@
                     currentSymbol: '',
                     currentName: '',
                     currentChartType: 'line',
-                    currentTimeframe: '5m',
+                    currentTimeframe: '1d',
                     historicalData: [],
                     crosshairData: null
                 };
@@ -1726,7 +1666,7 @@
                 }
 
                 // Load Icon with Retry Logic - بهتر شده
-                function loadIconWithFallback(iconPath, symbol) {
+                function loadIconWithFallback(iconPath, symbol, urlBaseIcon = 'https://brsapi.ir/Api/Market/GCC/Icon') {
                     if (!iconPath) {
                         return createSymbolFallback(symbol);
                     }
@@ -1740,16 +1680,14 @@
                         return createSymbolFallback(symbol);
                     }
 
-                    // آدرس‌های متعدد برای تلاش مجدد
-                    const iconUrls = [
-                        `https://brsapi.ir/Api/Market/GCC/Icon/256x256/${iconPath}`,
-                        `https://brsapi.ir/Api/Market/GCC/Icon/128x128/${iconPath}`,
-                        `https://brsapi.ir/Api/Market/GCC/Icon/64x64/${iconPath}`
-                    ];
+                    // آدرس‌های متعدد برای تلاش مجدد - طبق فرمت API: {url_base_icon}/{size}/{path_icon}
+                    const sizes = ['256x256', '128x128', '64x64', '32x32'];
+                    const iconUrls = sizes.map(size => `${urlBaseIcon}/${size}/${iconPath}`);
 
-                    // استفاده از data URL یا base64 اگر امکان پذیر باشد
-                    const encodedPath = encodeURIComponent(iconPath);
-                    const corsProxyUrl = `https://brsapi.ir/Api/Market/GCC/Icon/256x256/${encodedPath}`;
+                    // استفاده اولی: 128x128 برای موبایل و 256x256 برای دسکتاپ
+                    const isMobile = window.innerWidth <= 768;
+                    const initialSize = isMobile ? '128x128' : '256x256';
+                    const corsProxyUrl = `${urlBaseIcon}/${initialSize}/${iconPath}`;
 
                     return `<div id="${uniqueId}" class="icon-container" data-symbol="${symbol}" data-path="${iconPath}" style="width: 50px; height: 50px; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: transparent;">
                 <img src="${corsProxyUrl}" 
@@ -1757,6 +1695,7 @@
                      class="card-icon-img"
                      data-symbol="${symbol}"
                      data-icon-path="${iconPath}"
+                     data-base-url="${urlBaseIcon}"
                      data-urls='${JSON.stringify(iconUrls)}'
                      style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none; display: block;"
                      draggable="false"
@@ -1860,8 +1799,9 @@
 
                 // Try Next Image Size - بهبود‌شده
                 function tryNextSize(img, iconPath, wrapper, symbol, attemptCount = 0) {
-                    const sizes = ['256x256', '128x128', '64x64'];
+                    const sizes = ['256x256', '128x128', '64x64', '32x32'];
                     const maxAttempts = sizes.length;
+                    const baseUrl = img.getAttribute('data-base-url') || 'https://brsapi.ir/Api/Market/GCC/Icon';
 
                     if (attemptCount >= maxAttempts) {
                         // تمام سایز‌ها ناموفق - نمایش fallback
@@ -1870,7 +1810,8 @@
                     }
 
                     const nextSize = sizes[attemptCount];
-                    const newSrc = `https://brsapi.ir/Api/Market/GCC/Icon/${nextSize}/${iconPath}`;
+                    // طبق فرمت API: {url_base_icon}/{size}/{path_icon}
+                    const newSrc = `${baseUrl}/${nextSize}/${iconPath}`;
 
                     const newImg = document.createElement('img');
                     newImg.src = newSrc;
@@ -1878,6 +1819,7 @@
                     newImg.className = 'card-icon-img';
                     newImg.setAttribute('data-symbol', symbol);
                     newImg.setAttribute('data-icon-path', iconPath);
+                    newImg.setAttribute('data-base-url', baseUrl);
                     newImg.style.cssText = img.style.cssText;
                     newImg.draggable = false;
                     newImg.crossOrigin = 'anonymous';
@@ -2167,10 +2109,11 @@
                     const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
                     const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
 
-                    // ساخت آدرس آیکن از API (از path_icon در پاسخ API)
+                    // ساخت آدرس آیکن از API (از path_icon و url_base_icon در پاسخ API)
                     let iconElement = '';
                     if (item.path_icon) {
-                        iconElement = loadIconWithFallback(item.path_icon, item.symbol);
+                        const baseUrl = item.url_base_icon || 'https://brsapi.ir/Api/Market/GCC/Icon';
+                        iconElement = loadIconWithFallback(item.path_icon, item.symbol, baseUrl);
                     } else if (item.symbol) {
                         // Fallback: نمایش symbol به صورت متنی اگر icon موجود نباشد
                         iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">${item.symbol}</div>`;
@@ -2266,9 +2209,23 @@
 
                 // Open Chart Modal
                 async function openChartModal(symbol, name) {
-                    document.getElementById('chartModalTitle').textContent = `نمودار قیمت - ${name}`;
-                    document.getElementById('chartModalSymbol').textContent = symbol;
-                    document.getElementById('chartModal').classList.add('active');
+                    console.log(`🔓 openChartModal فراخوانی شد - symbol: ${symbol}, name: ${name}`);
+
+                    const chartModalTitle = document.getElementById('chartModalTitle');
+                    const chartModalSymbol = document.getElementById('chartModalSymbol');
+                    const chartModalElement = document.getElementById('chartModal');
+                    const chartTypeLabel = document.getElementById('chartTypeLabel');
+                    const timeframeLabel = document.getElementById('timeframeLabel');
+                    const zoomLevel = document.getElementById('zoomLevel');
+
+                    if (!chartModalTitle || !chartModalSymbol || !chartModalElement) {
+                        console.error('❌ عناصر مدال پیدا نشدند');
+                        return;
+                    }
+
+                    chartModalTitle.textContent = `نمودار قیمت - ${name}`;
+                    chartModalSymbol.textContent = symbol;
+                    chartModalElement.classList.add('active');
 
                     // اضافه کردن overflow hidden به body
                     document.body.classList.add('modal-open');
@@ -2280,19 +2237,10 @@
                     chartState.currentTimeframe = '1d';
                     currentZoom = 1;
 
-                    // نمایش loading برای نمودار
-                    const chartContainer = document.querySelector('.chart-container');
-                    chartContainer.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
-                    <div style="width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                    <p style="color: #999; font-size: 14px;">در حال بارگذاری نمودار...</p>
-                </div>
-            `;
-
                     // Reset dropdowns
-                    document.getElementById('chartTypeLabel').textContent = 'خط';
-                    document.getElementById('timeframeLabel').textContent = '1ر';
-                    document.getElementById('zoomLevel').textContent = '100%';
+                    if (chartTypeLabel) chartTypeLabel.textContent = 'خط';
+                    if (timeframeLabel) timeframeLabel.textContent = '1ر';
+                    if (zoomLevel) zoomLevel.textContent = '100%';
 
                     document.querySelectorAll('#chartTypeDropdown .dropdown-item').forEach(item => {
                         item.classList.remove('active');
@@ -2308,8 +2256,24 @@
                         }
                     });
 
+                    // نمایش loading برای نمودار
+                    const chartContainer = document.querySelector('.chart-container');
+                    if (!chartContainer) {
+                        console.error('❌ chartContainer پیدا نشد');
+                        return;
+                    }
+
+                    chartContainer.innerHTML = `
+                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
+                    <div style="width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="color: #999; font-size: 14px;">در حال بارگذاری نمودار...</p>
+                </div>
+            `;
+
                     // بارگذاری داده‌های اولیه
+                    console.log(`⏳ fetchHistoryData فراخوانی می‌شود برای: ${symbol}`);
                     await fetchHistoryData(symbol);
+                    console.log(`✅ fetchHistoryData تمام شد`);
                 }
 
                 // Close Chart Modal
@@ -2349,8 +2313,28 @@
                         }
 
                         console.log(`🔗 URL: ${url}`);
-                        const response = await fetch(url);
-                        const data = await response.json();
+
+                        let response;
+                        try {
+                            response = await fetch(url);
+                        } catch (fetchError) {
+                            console.error('❌ خطا در fetch:', fetchError);
+                            chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در اتصال: ' + fetchError.message + '</p>';
+                            return;
+                        }
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+
+                        let data;
+                        try {
+                            data = await response.json();
+                        } catch (parseError) {
+                            console.error('❌ خطا در parsing JSON:', parseError);
+                            chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در پردازش داده</p>';
+                            return;
+                        }
 
                         console.log(`📊 پاسخ API (history=${historyType}, timeframe=${timeframe}):`, data);
 
@@ -2374,9 +2358,22 @@
                             // داده‌های 24 ساعتی
                             console.log(`✅ داده‌های 24h دریافت شد: ${data.history_24h.length} رکورد`);
                             processedData = data.history_24h;
+                        } else if (data.history && Array.isArray(data.history)) {
+                            // داده‌های تاریخی عمومی
+                            console.log(`✅ داده‌های تاریخی دریافت شد: ${data.history.length} رکورد`);
+                            processedData = data.history;
                         } else {
                             console.error('❌ داده تاریخچه دریافت نشد یا خالی است');
+                            console.error('داده API:', data);
+                            console.error('کلیدهای موجود در داده:', Object.keys(data || {}));
                             chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا: داده تاریخچه در دسترس نیست</p>';
+                            return;
+                        }
+
+                        // بررسی اگر processedData خالی است
+                        if (!processedData || processedData.length === 0) {
+                            console.error('❌ processedData خالی است یا undefined');
+                            chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا: هیچ داده‌ای برای نمایش وجود ندارد</p>';
                             return;
                         }
 
@@ -2404,7 +2401,11 @@
                         }
 
                         chartState.historicalData = processedData;
-                        renderChart(processedData, symbol, data.name);
+                        const name = data.name || chartState.currentName || symbol;
+
+                        console.log(`🎨 رندر نمودار - symbol: ${symbol}, name: ${name}, data points: ${processedData.length}, type: ${chartState.currentChartType}`);
+
+                        renderChart(processedData, symbol, name);
                     } catch (error) {
                         console.error('❌ خطا در بارگذاری تاریخچه:', error);
                         const chartContainer = document.querySelector('.chart-container');
@@ -2491,7 +2492,21 @@
 
                 // Render Chart with different chart types - بهتر‌شده برای responsive
                 function renderChart(historyData, symbol, name) {
+                    console.log(`🎨 renderChart فراخوانی شد - symbol: ${symbol}, name: ${name}, data length: ${historyData.length}`);
+
                     const chartContainer = document.querySelector('.chart-container');
+
+                    if (!chartContainer) {
+                        console.error('❌ chartContainer یافت نشد');
+                        return;
+                    }
+
+                    // بررسی اگر داده خالی است
+                    if (!historyData || historyData.length === 0) {
+                        console.error('❌ historicalData خالی است');
+                        chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا: هیچ داده‌ای برای نمایش وجود ندارد</p>';
+                        return;
+                    }
 
                     // حذف نمودار قبلی
                     if (chartInstance) {
@@ -2502,7 +2517,16 @@
                     chartContainer.innerHTML = '<canvas id="priceChart"></canvas>';
 
                     const canvas = document.getElementById('priceChart');
+                    if (!canvas) {
+                        console.error('❌ canvas یافت نشد');
+                        return;
+                    }
+
                     const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        console.error('❌ 2d context یافت نشد');
+                        return;
+                    }
 
                     // بدون reverse - داده‌ها قبلاً sorted شده‌اند
                     const sortedData = [...historyData];
@@ -2948,7 +2972,9 @@
                     }
                 }
 
-                function selectTimeframe(timeframe) {
+                async function selectTimeframe(timeframe) {
+                    console.log(`⏱️ selectTimeframe فراخوانی شد - timeframe: ${timeframe}`);
+
                     chartState.currentTimeframe = timeframe;
                     const timeframeLabels = {
                         '1m': '1د', '3m': '3د', '5m': '5د', '15m': '15د', '30m': '30د', '45m': '45د',
@@ -2969,14 +2995,16 @@
                     // نمایش loading
                     const chartContainer = document.querySelector('.chart-container');
                     chartContainer.innerHTML = `
-                                    <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
-                                        <div style="width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                                        <p style="color: #999; font-size: 14px;">در حال بارگذاری نمودار...</p>
-                                    </div>
-                                `;
+                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
+                    <div style="width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="color: #999; font-size: 14px;">در حال بارگذاری نمودار...</p>
+                </div>
+            `;
 
                     // بارگذاری داده‌های جدید
-                    fetchHistoryData(chartState.currentSymbol);
+                    console.log(`⏳ fetchHistoryData فراخوانی می‌شود برای: ${chartState.currentSymbol}`);
+                    await fetchHistoryData(chartState.currentSymbol);
+                    console.log(`✅ fetchHistoryData تمام شد`);
                 }
 
                 // ===== Zoom Functions =====
