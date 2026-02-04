@@ -695,25 +695,38 @@
 
         .chart-container {
             position: relative;
-            flex: 1;
-            min-height: 400px;
-            max-height: 70vh;
-            margin-bottom: 20px;
-            background: white;
-            border-radius: 8px;
+            width: 100%;
+            height: 400px;
+            margin: 20px 0;
+            background: rgba(102, 126, 234, 0.05);
+            border-radius: 12px;
             padding: 15px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            box-sizing: border-box;
+            display: block;
+        }
+
+        .chart-container canvas {
+            max-width: 100%;
+            max-height: 100%;
         }
 
         body.dark-mode .chart-container {
-            background: #1e1e1e;
+            background: rgba(102, 126, 234, 0.08);
         }
 
         /* ===== Responsive ===== */
+        @media (max-width: 1200px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
         @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+                padding: 10px;
+            }
+
             .price-grid {
                 grid-template-columns: 1fr;
             }
@@ -893,6 +906,19 @@
 
         .pull-to-refresh.active {
             opacity: 1;
+        }
+
+        /* Slide down animation for cards and search during pull-to-refresh */
+        body.refreshing .search-container,
+        body.refreshing #priceGrid {
+            transform: translateY(120px);
+            transition: transform 0.3s ease;
+        }
+
+        body:not(.refreshing) .search-container,
+        body:not(.refreshing) #priceGrid {
+            transform: translateY(0);
+            transition: transform 0.4s ease;
         }
 
         body.light-mode .pull-to-refresh {
@@ -1168,22 +1194,24 @@
             background: white;
             border: 1px solid #ddd;
             border-radius: 8px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             z-index: 1001;
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.3s ease;
             margin-top: 5px;
+            display: none;
         }
 
         body.dark-mode .dropdown-menu {
             background: #2d2d2d;
             border-color: #444;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
         }
 
         .dropdown-menu.active {
-            max-height: 500px;
+            display: block;
+            max-height: 300px;
             overflow-y: auto;
         }
 
@@ -1201,7 +1229,7 @@
         }
 
         .dropdown-category {
-            padding: 8px 0;
+            padding: 4px 0;
             border-bottom: 1px solid #eee;
         }
 
@@ -1214,8 +1242,8 @@
         }
 
         .category-title {
-            padding: 8px 15px;
-            font-size: 11px;
+            padding: 6px 15px;
+            font-size: 10px;
             font-weight: 700;
             color: #999;
             text-transform: uppercase;
@@ -1228,7 +1256,7 @@
 
         .dropdown-item {
             width: 100%;
-            padding: 12px 15px;
+            padding: 8px 15px;
             border: none;
             background: transparent;
             color: #333;
@@ -1619,102 +1647,111 @@
                         <button class="zoom-btn" onclick="zoomChart(0.8)" title="کوچک‌تر">−</button>
                         <button class="zoom-btn zoom-reset" onclick="resetZoom()" id="zoomLevel">100%</button>
                         <button class="zoom-btn" onclick="zoomChart(1.2)" title="بزرگ‌تر">+</button>
-                        <script>
-                            // ⚙️ Cloudflare Worker URL - API Proxy
-                            const WORKER_URL = 'https://ons-gold-tg.panytb.workers.dev';
-                            // ✅ API Key محفوظ است - در Cloudflare Server ذخیره شده
-                            const API_URL = `${WORKER_URL}/api/prices`;
+                    </div>
+                </div>
+            </div>
 
-                            // Detect if running in Telegram Mini App
-                            const isTelegramMiniApp = () => {
-                                return typeof window !== 'undefined' &&
-                                    (window.TelegramWebApp ||
-                                        window.Telegram ||
-                                        navigator.userAgent.includes('TelegramBot') ||
-                                        navigator.userAgent.includes('Telegram'));
-                            };
+            <!-- Chart Container -->
+            <div class="chart-container"
+                style="width: 100%; height: 400px; position: relative; margin: 20px 0; border-radius: 12px; padding: 15px; background: rgba(102, 126, 234, 0.05);">
+            </div>
 
-                            // State
-                            let allData = {
-                                gold: [],
-                                currency: [],
-                                cryptocurrency: []
-                            };
-                            let filteredData = [];
-                            let currentFilter = 'all';
-                            let chartInstance = null;
+            <script>
+                // ⚙️ Cloudflare Worker URL - API Proxy
+                const WORKER_URL = 'https://ons-gold-tg.panytb.workers.dev';
+                // ✅ API Key محفوظ است - در Cloudflare Server ذخیره شده
+                const API_URL = `${WORKER_URL}/api/prices`;
 
-                            // Chart state
-                            let chartState = {
-                                currentSymbol: '',
-                                currentName: '',
-                                currentChartType: 'line',
-                                currentTimeframe: '5m',
-                                historicalData: [],
-                                crosshairData: null
-                            };
+                // Detect if running in Telegram Mini App
+                const isTelegramMiniApp = () => {
+                    return typeof window !== 'undefined' &&
+                        (window.TelegramWebApp ||
+                            window.Telegram ||
+                            navigator.userAgent.includes('TelegramBot') ||
+                            navigator.userAgent.includes('Telegram'));
+                };
 
-                            // Format Persian Digits
-                            function toPersianDigits(str) {
-                                const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-                                const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+                // State
+                let allData = {
+                    gold: [],
+                    currency: [],
+                    cryptocurrency: []
+                };
+                let filteredData = [];
+                let currentFilter = 'all';
+                let chartInstance = null;
 
-                                let result = str.toString();
-                                for (let i = 0; i < englishDigits.length; i++) {
-                                    result = result.replace(new RegExp(englishDigits[i], 'g'), persianDigits[i]);
-                                }
-                                return result;
-                            }
+                // Chart state
+                let chartState = {
+                    currentSymbol: '',
+                    currentName: '',
+                    currentChartType: 'line',
+                    currentTimeframe: '5m',
+                    historicalData: [],
+                    crosshairData: null
+                };
 
-                            // Format Price with Separators (برای ارزهای اعشاری و معمولی)
-                            function formatPrice(price) {
-                                // اگر قیمت string و با 0. شروع می‌شود، دقیقاً همان را نمایش بده
-                                if (typeof price === 'string' && price.startsWith('0.')) {
-                                    return price;
-                                }
+                // Format Persian Digits
+                function toPersianDigits(str) {
+                    const englishDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+                    const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
 
-                                price = parseFloat(price);
+                    let result = str.toString();
+                    for (let i = 0; i < englishDigits.length; i++) {
+                        result = result.replace(new RegExp(englishDigits[i], 'g'), persianDigits[i]);
+                    }
+                    return result;
+                }
 
-                                // اگر قیمت خیلی پایین باشد (مثل رمزارزهایی که < 1)
-                                if (price < 1) {
-                                    // نمایش 6 رقم اعشار برای ارزهای بسیار پایین
-                                    return price.toFixed(6).replace(/\.?0+$/, '');
-                                } else if (price < 100) {
-                                    // نمایش 2 رقم اعشار برای ارزهای کمتر از 100
-                                    return price.toFixed(2).replace(/\.?0+$/, '');
-                                } else {
-                                    // نمایش بدون اعشار + separator برای ارزهای بزرگ
-                                    return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-                                }
-                            }
+                // Format Price with Separators (برای ارزهای اعشاری و معمولی)
+                function formatPrice(price) {
+                    // اگر قیمت string و با 0. شروع می‌شود، دقیقاً همان را نمایش بده
+                    if (typeof price === 'string' && price.startsWith('0.')) {
+                        return price;
+                    }
 
-                            // Load Icon with Retry Logic - بهتر شده
-                            function loadIconWithFallback(iconPath, symbol) {
-                                if (!iconPath) {
-                                    return createSymbolFallback(symbol);
-                                }
+                    price = parseFloat(price);
 
-                                const uniqueId = `icon-${symbol.replace(/[^a-zA-Z0-9]/g, '_')}`;
-                                const isInMiniApp = isTelegramMiniApp();
+                    // اگر قیمت خیلی پایین باشد (مثل رمزارزهایی که < 1)
+                    if (price < 1) {
+                        // نمایش 6 رقم اعشار برای ارزهای بسیار پایین
+                        return price.toFixed(6).replace(/\.?0+$/, '');
+                    } else if (price < 100) {
+                        // نمایش 2 رقم اعشار برای ارزهای کمتر از 100
+                        return price.toFixed(2).replace(/\.?0+$/, '');
+                    } else {
+                        // نمایش بدون اعشار + separator برای ارزهای بزرگ
+                        return Math.round(price).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                    }
+                }
 
-                                // اگر در Mini App هستیم، بلافاصله fallback استفاده کنیم
-                                if (isInMiniApp) {
-                                    console.warn(`⚠️ Mini App detected - using fallback for ${symbol}`);
-                                    return createSymbolFallback(symbol);
-                                }
+                // Load Icon with Retry Logic - بهتر شده
+                function loadIconWithFallback(iconPath, symbol) {
+                    if (!iconPath) {
+                        return createSymbolFallback(symbol);
+                    }
 
-                                // آدرس‌های متعدد برای تلاش مجدد
-                                const iconUrls = [
-                                    `https://brsapi.ir/Api/Market/GCC/Icon/256x256/${iconPath}`,
-                                    `https://brsapi.ir/Api/Market/GCC/Icon/128x128/${iconPath}`,
-                                    `https://brsapi.ir/Api/Market/GCC/Icon/64x64/${iconPath}`
-                                ];
+                    const uniqueId = `icon-${symbol.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                    const isInMiniApp = isTelegramMiniApp();
 
-                                // استفاده از data URL یا base64 اگر امکان پذیر باشد
-                                const encodedPath = encodeURIComponent(iconPath);
-                                const corsProxyUrl = `https://brsapi.ir/Api/Market/GCC/Icon/256x256/${encodedPath}`;
+                    // اگر در Mini App هستیم، بلافاصله fallback استفاده کنیم
+                    if (isInMiniApp) {
+                        console.warn(`⚠️ Mini App detected - using fallback for ${symbol}`);
+                        return createSymbolFallback(symbol);
+                    }
 
-                                return `<div id="${uniqueId}" class="icon-container" data-symbol="${symbol}" data-path="${iconPath}" style="width: 50px; height: 50px; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: transparent;">
+                    // آدرس‌های متعدد برای تلاش مجدد
+                    const iconUrls = [
+                        `https://brsapi.ir/Api/Market/GCC/Icon/256x256/${iconPath}`,
+                        `https://brsapi.ir/Api/Market/GCC/Icon/128x128/${iconPath}`,
+                        `https://brsapi.ir/Api/Market/GCC/Icon/64x64/${iconPath}`
+                    ];
+
+                    // استفاده از data URL یا base64 اگر امکان پذیر باشد
+                    const encodedPath = encodeURIComponent(iconPath);
+                    const corsProxyUrl = `https://brsapi.ir/Api/Market/GCC/Icon/256x256/${encodedPath}`;
+
+                    return `<div id="${uniqueId}" class="icon-container" data-symbol="${symbol}" data-path="${iconPath}" style="width: 50px; height: 50px; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: transparent;">
                 <img src="${corsProxyUrl}" 
                      alt="${symbol}" 
                      class="card-icon-img"
@@ -1726,337 +1763,357 @@
                      crossorigin="anonymous"
                      loading="lazy">
             </div>`;
+                }
+
+                // Create Symbol Fallback with emoji
+                function createSymbolFallback(symbol) {
+                    // Symbol‌های رایج و آیکون‌های آن
+                    const symbolEmojis = {
+                        'طلا': '🥇',
+                        'انس طلا': '🥇',
+                        'IR_GOLD': '🥇',
+                        'نقره': '🥈',
+                        'مس': '🔴',
+                        'USDT': '💵',
+                        'USD': '💵',
+                        'XAUUSD': '🥇',
+                        'EUR': '€',
+                        'GBP': '£',
+                        'JPY': '¥',
+                        'BTC': '₿',
+                        'ETH': 'Ξ',
+                        'ADA': '₳',
+                        'XRP': '✕',
+                        'DOGE': '🐕',
+                        'SOL': '◎',
+                        'BNB': '🔶',
+                    };
+
+                    // Check by exact match first
+                    let emoji = symbolEmojis[symbol];
+
+                    // If not found, try partial match
+                    if (!emoji) {
+                        for (const [key, value] of Object.entries(symbolEmojis)) {
+                            if (symbol.includes(key) || key.includes(symbol)) {
+                                emoji = value;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Default fallback
+                    if (!emoji) {
+                        emoji = symbol.length > 0 ? symbol.charAt(0) : '💰';
+                    }
+
+                    const isEmoji = emoji.match(/\p{Emoji}/u);
+
+                    if (isEmoji) {
+                        return `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 28px; user-select: none; pointer-events: none;">${emoji}</div>`;
+                    } else {
+                        return `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word; overflow: hidden;">${symbol.substring(0, 6)}</div>`;
+                    }
+                }
+
+                // Setup Image Error Handlers - بهبود‌شده برای Mini App
+                function setupImageErrorHandlers() {
+                    const images = document.querySelectorAll('.card-icon-img');
+                    images.forEach(img => {
+                        if (img.__handlersSetup) return; // تا دوبار اجرا نشود
+                        img.__handlersSetup = true;
+
+                        const symbol = img.getAttribute('data-symbol');
+                        const iconPath = img.getAttribute('data-icon-path');
+                        const wrapper = img.parentElement;
+
+                        // اگر عکس قبلاً لوڈ شده باشد
+                        if (img.complete) {
+                            if (img.naturalHeight === 0 && img.naturalWidth === 0) {
+                                // عکس خراب است
+                                tryNextSize(img, iconPath, wrapper, symbol, 0);
+                            } else {
+                                img.style.display = 'block';
+                            }
+                        }
+
+                        // برای عکس‌های جدید
+                        img.addEventListener('load', function () {
+                            this.style.display = 'block';
+                        });
+
+                        img.addEventListener('error', function () {
+                            tryNextSize(this, iconPath, wrapper, symbol, 0);
+                        });
+
+                        // Timeout برای مواقع آفلاین یا بسیار کند
+                        setTimeout(() => {
+                            if (!img.__handlersSetup || img.__timeoutChecked) return;
+                            img.__timeoutChecked = true;
+
+                            if (!img.complete || (img.naturalHeight === 0 && img.naturalWidth === 0)) {
+                                tryNextSize(img, iconPath, wrapper, symbol, 0);
+                            }
+                        }, 5000);
+                    });
+                }
+
+                // Try Next Image Size - بهبود‌شده
+                function tryNextSize(img, iconPath, wrapper, symbol, attemptCount = 0) {
+                    const sizes = ['256x256', '128x128', '64x64'];
+                    const maxAttempts = sizes.length;
+
+                    if (attemptCount >= maxAttempts) {
+                        // تمام سایز‌ها ناموفق - نمایش fallback
+                        wrapper.innerHTML = createSymbolFallback(symbol);
+                        return;
+                    }
+
+                    const nextSize = sizes[attemptCount];
+                    const newSrc = `https://brsapi.ir/Api/Market/GCC/Icon/${nextSize}/${iconPath}`;
+
+                    const newImg = document.createElement('img');
+                    newImg.src = newSrc;
+                    newImg.alt = symbol;
+                    newImg.className = 'card-icon-img';
+                    newImg.setAttribute('data-symbol', symbol);
+                    newImg.setAttribute('data-icon-path', iconPath);
+                    newImg.style.cssText = img.style.cssText;
+                    newImg.draggable = false;
+                    newImg.crossOrigin = 'anonymous';
+
+                    const loadTimeout = setTimeout(() => {
+                        // اگر بعد از 3 ثانیه لود نشد، سراغ سایز بعدی
+                        if (!newImg.complete) {
+                            tryNextSize(newImg, iconPath, wrapper, symbol, attemptCount + 1);
+                        }
+                    }, 3000);
+
+                    newImg.addEventListener('load', function () {
+                        clearTimeout(loadTimeout);
+                        this.style.display = 'block';
+                        if (img.parentElement) {
+                            img.replaceWith(this);
+                        }
+                    });
+
+                    newImg.addEventListener('error', function () {
+                        clearTimeout(loadTimeout);
+                        tryNextSize(this, iconPath, wrapper, symbol, attemptCount + 1);
+                    });
+
+                    if (img.parentElement) {
+                        img.replaceWith(newImg);
+                    } else {
+                        wrapper.innerHTML = '';
+                        wrapper.appendChild(newImg);
+                    }
+                }
+
+                // Format Time
+                function formatTime(date) {
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    return `${hours}:${minutes}`;
+                }
+
+                // Format Date (Jalali with English digits)
+                function formatDateJalali(date) {
+                    const jalaliDate = date.toLocaleDateString('fa-IR');
+                    // تبدیل اعداد فارسی به انگلیسی
+                    return jalaliDate.replace(/\u06F0/g, '0')
+                        .replace(/\u06F1/g, '1')
+                        .replace(/\u06F2/g, '2')
+                        .replace(/\u06F3/g, '3')
+                        .replace(/\u06F4/g, '4')
+                        .replace(/\u06F5/g, '5')
+                        .replace(/\u06F6/g, '6')
+                        .replace(/\u06F7/g, '7')
+                        .replace(/\u06F8/g, '8')
+                        .replace(/\u06F9/g, '9');
+                }
+
+                // Update bottom nav datetime
+                function updateNavDateTime() {
+                    const now = new Date();
+                    document.getElementById('navDate').textContent = formatDateJalali(now);
+                    document.getElementById('navTime').textContent = formatTime(now);
+                }
+
+                // Toggle Dark Mode
+                function toggleDarkMode() {
+                    document.body.classList.toggle('dark-mode');
+                    document.body.classList.toggle('light-mode');
+                    const isDark = document.body.classList.contains('dark-mode');
+                    document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
+                    localStorage.setItem('darkMode', isDark ? 'true' : 'false');
+                }
+
+                // Load dark mode preference
+                function loadDarkModePreference() {
+                    const isDark = localStorage.getItem('darkMode') !== 'false'; // پیش‌فرض dark mode
+                    if (isDark) {
+                        document.body.classList.add('dark-mode');
+                        document.getElementById('themeToggle').textContent = '☀️';
+                    } else {
+                        document.body.classList.add('light-mode');
+                        document.getElementById('themeToggle').textContent = '🌙';
+                    }
+                }
+
+                // Simplified Scroll Manager
+                let lastScrollTop = 0;
+
+                window.addEventListener('scroll', () => {
+                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    const bottomNav = document.getElementById('bottomNav');
+
+                    // منطق snack bar
+                    if (scrollTop > lastScrollTop && scrollTop > 200) {
+                        // scrolling down
+                        bottomNav.classList.add('hidden');
+                    } else {
+                        // scrolling up
+                        bottomNav.classList.remove('hidden');
+                    }
+
+                    lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+                }, { passive: true });
+
+                // Update Indicator Position
+                function updateIndicator(skipTransition = false) {
+                    const activeTab = document.querySelector('.nav-tab.active');
+                    const navTabs = document.querySelector('.nav-tabs');
+
+                    if (activeTab && navTabs) {
+                        const tabRect = activeTab.getBoundingClientRect();
+                        const containerRect = navTabs.getBoundingClientRect();
+
+                        const offset = tabRect.left - containerRect.left;
+                        const width = tabRect.width;
+
+                        navTabs.style.setProperty('--indicator-left', `${offset}px`);
+                        navTabs.style.setProperty('--indicator-width', `${width}px`);
+
+                        // Remove init class to enable transition after first update
+                        if (skipTransition && navTabs.classList.contains('init')) {
+                            requestAnimationFrame(() => {
+                                navTabs.classList.remove('init');
+                            });
+                        }
+                    }
+                }
+
+                // Switch tab
+                function switchTab(filter) {
+                    currentFilter = filter;
+                    document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+                    event.target.classList.add('active');
+                    updateIndicator();
+                    filterAndRender();
+                    // صفحه را به بالا ببر
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                }
+
+                // Fetch Data from API (via Cloudflare Worker Proxy)
+                async function fetchData() {
+                    try {
+                        document.getElementById('loadingState').style.display = 'none';
+                        document.getElementById('priceGrid').innerHTML = '';
+                        document.getElementById('emptyState').style.display = 'none';
+
+                        // نمایش skeleton loading
+                        const grid = document.getElementById('priceGrid');
+                        const skeletonCount = 4;
+                        for (let i = 0; i < skeletonCount; i++) {
+                            grid.appendChild(createSkeletonCard());
+                        }
+
+                        // درخواست از Worker proxy
+                        const response = await fetch(`${API_URL}?section=gold,currency,cryptocurrency`);
+                        const data = await response.json();
+
+                        if (data.successful) {
+                            // Process Gold Data
+                            if (data.gold) {
+                                allData.gold = [
+                                    ...data.gold.ounce.map(item => ({ ...item, type: 'gold', category: 'ounce' })),
+                                    ...data.gold.type.map(item => ({ ...item, type: 'gold', category: 'type' })),
+                                    ...data.gold.coin.map(item => ({ ...item, type: 'gold', category: 'coin' })),
+                                    ...data.gold.coin_parsian.map(item => ({ ...item, type: 'gold', category: 'coin_parsian' }))
+                                ];
                             }
 
-                            // Create Symbol Fallback with emoji
-                            function createSymbolFallback(symbol) {
-                                // Symbol‌های رایج و آیکون‌های آن
-                                const symbolEmojis = {
-                                    'طلا': '🥇',
-                                    'نقره': '🥈',
-                                    'مس': '🔴',
-                                    'USDT': '💵',
-                                    'USD': '💵',
-                                    'EUR': '€',
-                                    'GBP': '£',
-                                    'JPY': '¥',
-                                    'BTC': '₿',
-                                    'ETH': 'Ξ',
-                                    'ADA': '₳',
-                                    'XRP': '✕',
-                                    'DOGE': '🐕',
-                                    'SOL': '◎',
-                                    'BNB': '🔶',
-                                };
-
-                                const emoji = symbolEmojis[symbol] || (symbol.length > 0 ? symbol.charAt(0) : '💰');
-                                const isEmoji = emoji.match(/\p{Emoji}/u);
-
-                                if (isEmoji) {
-                                    return `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 28px; user-select: none; pointer-events: none;">${emoji}</div>`;
-                                } else {
-                                    return `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word; overflow: hidden;">${symbol.substring(0, 6)}</div>`;
-                                }
+                            // Process Currency Data
+                            if (data.currency && data.currency.free) {
+                                allData.currency = data.currency.free.map(item => ({ ...item, type: 'currency' }));
                             }
 
-                            // Setup Image Error Handlers - بهبود‌شده برای Mini App
-                            function setupImageErrorHandlers() {
-                                const images = document.querySelectorAll('.card-icon-img');
-                                images.forEach(img => {
-                                    if (img.__handlersSetup) return; // تا دوبار اجرا نشود
-                                    img.__handlersSetup = true;
-
-                                    const symbol = img.getAttribute('data-symbol');
-                                    const iconPath = img.getAttribute('data-icon-path');
-                                    const wrapper = img.parentElement;
-
-                                    // اگر عکس قبلاً لوڈ شده باشد
-                                    if (img.complete) {
-                                        if (img.naturalHeight === 0 && img.naturalWidth === 0) {
-                                            // عکس خراب است
-                                            tryNextSize(img, iconPath, wrapper, symbol, 0);
-                                        } else {
-                                            img.style.display = 'block';
-                                        }
-                                    }
-
-                                    // برای عکس‌های جدید
-                                    img.addEventListener('load', function () {
-                                        this.style.display = 'block';
-                                    });
-
-                                    img.addEventListener('error', function () {
-                                        tryNextSize(this, iconPath, wrapper, symbol, 0);
-                                    });
-
-                                    // Timeout برای مواقع آفلاین یا بسیار کند
-                                    setTimeout(() => {
-                                        if (!img.__handlersSetup || img.__timeoutChecked) return;
-                                        img.__timeoutChecked = true;
-
-                                        if (!img.complete || (img.naturalHeight === 0 && img.naturalWidth === 0)) {
-                                            tryNextSize(img, iconPath, wrapper, symbol, 0);
-                                        }
-                                    }, 5000);
-                                });
+                            // Process Crypto Data
+                            if (data.cryptocurrency) {
+                                allData.cryptocurrency = data.cryptocurrency.map(item => ({ ...item, type: 'crypto' }));
                             }
 
-                            // Try Next Image Size - بهبود‌شده
-                            function tryNextSize(img, iconPath, wrapper, symbol, attemptCount = 0) {
-                                const sizes = ['256x256', '128x128', '64x64'];
-                                const maxAttempts = sizes.length;
+                            // Update Filter and Render
+                            filterAndRender();
 
-                                if (attemptCount >= maxAttempts) {
-                                    // تمام سایز‌ها ناموفق - نمایش fallback
-                                    wrapper.innerHTML = createSymbolFallback(symbol);
-                                    return;
-                                }
+                            // Update Time
+                            document.getElementById('updateTime').textContent = formatTime(new Date());
+                        } else {
+                            showError('خطا در دریافت اطلاعات از API');
+                        }
+                    } catch (error) {
+                        console.error('خطا:', error);
+                        showError('خطا در اتصال به سرور');
+                    } finally {
+                        document.getElementById('loadingState').style.display = 'none';
+                    }
+                }
 
-                                const nextSize = sizes[attemptCount];
-                                const newSrc = `https://brsapi.ir/Api/Market/GCC/Icon/${nextSize}/${iconPath}`;
+                // Filter and Render
+                function filterAndRender() {
+                    let dataToRender = [];
 
-                                const newImg = document.createElement('img');
-                                newImg.src = newSrc;
-                                newImg.alt = symbol;
-                                newImg.className = 'card-icon-img';
-                                newImg.setAttribute('data-symbol', symbol);
-                                newImg.setAttribute('data-icon-path', iconPath);
-                                newImg.style.cssText = img.style.cssText;
-                                newImg.draggable = false;
-                                newImg.crossOrigin = 'anonymous';
+                    if (currentFilter === 'all') {
+                        dataToRender = [...allData.gold, ...allData.currency, ...allData.cryptocurrency];
+                    } else if (currentFilter === 'gold') {
+                        dataToRender = allData.gold;
+                    } else if (currentFilter === 'currency') {
+                        dataToRender = allData.currency;
+                    } else if (currentFilter === 'crypto') {
+                        dataToRender = allData.cryptocurrency;
+                    }
 
-                                const loadTimeout = setTimeout(() => {
-                                    // اگر بعد از 3 ثانیه لود نشد، سراغ سایز بعدی
-                                    if (!newImg.complete) {
-                                        tryNextSize(newImg, iconPath, wrapper, symbol, attemptCount + 1);
-                                    }
-                                }, 3000);
+                    // Apply Search Filter
+                    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                    if (searchTerm) {
+                        dataToRender = dataToRender.filter(item => {
+                            const name = item.name ? item.name.toLowerCase() : '';
+                            const nameEn = item.name_en ? item.name_en.toLowerCase() : '';
+                            const symbol = item.symbol ? item.symbol.toLowerCase() : '';
+                            return name.includes(searchTerm) || nameEn.includes(searchTerm) || symbol.includes(searchTerm);
+                        });
+                    }
 
-                                newImg.addEventListener('load', function () {
-                                    clearTimeout(loadTimeout);
-                                    this.style.display = 'block';
-                                    if (img.parentElement) {
-                                        img.replaceWith(this);
-                                    }
-                                });
+                    filteredData = dataToRender;
 
-                                newImg.addEventListener('error', function () {
-                                    clearTimeout(loadTimeout);
-                                    tryNextSize(this, iconPath, wrapper, symbol, attemptCount + 1);
-                                });
+                    if (dataToRender.length === 0) {
+                        document.getElementById('emptyState').style.display = 'block';
+                        document.getElementById('priceGrid').innerHTML = '';
+                    } else {
+                        document.getElementById('emptyState').style.display = 'none';
+                        renderPrices(dataToRender);
+                    }
+                }
 
-                                if (img.parentElement) {
-                                    img.replaceWith(newImg);
-                                } else {
-                                    wrapper.innerHTML = '';
-                                    wrapper.appendChild(newImg);
-                                }
-                            }
-
-                            // Format Time
-                            function formatTime(date) {
-                                const hours = String(date.getHours()).padStart(2, '0');
-                                const minutes = String(date.getMinutes()).padStart(2, '0');
-                                return `${hours}:${minutes}`;
-                            }
-
-                            // Format Date (Jalali with English digits)
-                            function formatDateJalali(date) {
-                                const jalaliDate = date.toLocaleDateString('fa-IR');
-                                // تبدیل اعداد فارسی به انگلیسی
-                                return jalaliDate.replace(/\u06F0/g, '0')
-                                    .replace(/\u06F1/g, '1')
-                                    .replace(/\u06F2/g, '2')
-                                    .replace(/\u06F3/g, '3')
-                                    .replace(/\u06F4/g, '4')
-                                    .replace(/\u06F5/g, '5')
-                                    .replace(/\u06F6/g, '6')
-                                    .replace(/\u06F7/g, '7')
-                                    .replace(/\u06F8/g, '8')
-                                    .replace(/\u06F9/g, '9');
-                            }
-
-                            // Update bottom nav datetime
-                            function updateNavDateTime() {
-                                const now = new Date();
-                                document.getElementById('navDate').textContent = formatDateJalali(now);
-                                document.getElementById('navTime').textContent = formatTime(now);
-                            }
-
-                            // Toggle Dark Mode
-                            function toggleDarkMode() {
-                                document.body.classList.toggle('dark-mode');
-                                document.body.classList.toggle('light-mode');
-                                const isDark = document.body.classList.contains('dark-mode');
-                                document.getElementById('themeToggle').textContent = isDark ? '☀️' : '🌙';
-                                localStorage.setItem('darkMode', isDark ? 'true' : 'false');
-                            }
-
-                            // Load dark mode preference
-                            function loadDarkModePreference() {
-                                const isDark = localStorage.getItem('darkMode') !== 'false'; // پیش‌فرض dark mode
-                                if (isDark) {
-                                    document.body.classList.add('dark-mode');
-                                    document.getElementById('themeToggle').textContent = '☀️';
-                                } else {
-                                    document.body.classList.add('light-mode');
-                                    document.getElementById('themeToggle').textContent = '🌙';
-                                }
-                            }
-
-                            // Simplified Scroll Manager
-                            let lastScrollTop = 0;
-
-                            window.addEventListener('scroll', () => {
-                                const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                                const bottomNav = document.getElementById('bottomNav');
-
-                                // منطق snack bar
-                                if (scrollTop > lastScrollTop && scrollTop > 200) {
-                                    // scrolling down
-                                    bottomNav.classList.add('hidden');
-                                } else {
-                                    // scrolling up
-                                    bottomNav.classList.remove('hidden');
-                                }
-
-                                lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
-                            }, { passive: true });
-
-                            // Update Indicator Position
-                            function updateIndicator(skipTransition = false) {
-                                const activeTab = document.querySelector('.nav-tab.active');
-                                const navTabs = document.querySelector('.nav-tabs');
-
-                                if (activeTab && navTabs) {
-                                    const tabRect = activeTab.getBoundingClientRect();
-                                    const containerRect = navTabs.getBoundingClientRect();
-
-                                    const offset = tabRect.left - containerRect.left;
-                                    const width = tabRect.width;
-
-                                    navTabs.style.setProperty('--indicator-left', `${offset}px`);
-                                    navTabs.style.setProperty('--indicator-width', `${width}px`);
-
-                                    // Remove init class to enable transition after first update
-                                    if (skipTransition && navTabs.classList.contains('init')) {
-                                        requestAnimationFrame(() => {
-                                            navTabs.classList.remove('init');
-                                        });
-                                    }
-                                }
-                            }
-
-                            // Switch tab
-                            function switchTab(filter) {
-                                currentFilter = filter;
-                                document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-                                event.target.classList.add('active');
-                                updateIndicator();
-                                filterAndRender();
-                                // صفحه را به بالا ببر
-                                window.scrollTo({
-                                    top: 0,
-                                    behavior: 'smooth'
-                                });
-                            }
-
-                            // Fetch Data from API (via Cloudflare Worker Proxy)
-                            async function fetchData() {
-                                try {
-                                    document.getElementById('loadingState').style.display = 'none';
-                                    document.getElementById('priceGrid').innerHTML = '';
-                                    document.getElementById('emptyState').style.display = 'none';
-
-                                    // نمایش skeleton loading
-                                    const grid = document.getElementById('priceGrid');
-                                    const skeletonCount = 4;
-                                    for (let i = 0; i < skeletonCount; i++) {
-                                        grid.appendChild(createSkeletonCard());
-                                    }
-
-                                    // درخواست از Worker proxy
-                                    const response = await fetch(`${API_URL}?section=gold,currency,cryptocurrency`);
-                                    const data = await response.json();
-
-                                    if (data.successful) {
-                                        // Process Gold Data
-                                        if (data.gold) {
-                                            allData.gold = [
-                                                ...data.gold.ounce.map(item => ({ ...item, type: 'gold', category: 'ounce' })),
-                                                ...data.gold.type.map(item => ({ ...item, type: 'gold', category: 'type' })),
-                                                ...data.gold.coin.map(item => ({ ...item, type: 'gold', category: 'coin' })),
-                                                ...data.gold.coin_parsian.map(item => ({ ...item, type: 'gold', category: 'coin_parsian' }))
-                                            ];
-                                        }
-
-                                        // Process Currency Data
-                                        if (data.currency && data.currency.free) {
-                                            allData.currency = data.currency.free.map(item => ({ ...item, type: 'currency' }));
-                                        }
-
-                                        // Process Crypto Data
-                                        if (data.cryptocurrency) {
-                                            allData.cryptocurrency = data.cryptocurrency.map(item => ({ ...item, type: 'crypto' }));
-                                        }
-
-                                        // Update Filter and Render
-                                        filterAndRender();
-
-                                        // Update Time
-                                        document.getElementById('updateTime').textContent = formatTime(new Date());
-                                    } else {
-                                        showError('خطا در دریافت اطلاعات از API');
-                                    }
-                                } catch (error) {
-                                    console.error('خطا:', error);
-                                    showError('خطا در اتصال به سرور');
-                                } finally {
-                                    document.getElementById('loadingState').style.display = 'none';
-                                }
-                            }
-
-                            // Filter and Render
-                            function filterAndRender() {
-                                let dataToRender = [];
-
-                                if (currentFilter === 'all') {
-                                    dataToRender = [...allData.gold, ...allData.currency, ...allData.cryptocurrency];
-                                } else if (currentFilter === 'gold') {
-                                    dataToRender = allData.gold;
-                                } else if (currentFilter === 'currency') {
-                                    dataToRender = allData.currency;
-                                } else if (currentFilter === 'crypto') {
-                                    dataToRender = allData.cryptocurrency;
-                                }
-
-                                // Apply Search Filter
-                                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-                                if (searchTerm) {
-                                    dataToRender = dataToRender.filter(item => {
-                                        const name = item.name ? item.name.toLowerCase() : '';
-                                        const nameEn = item.name_en ? item.name_en.toLowerCase() : '';
-                                        const symbol = item.symbol ? item.symbol.toLowerCase() : '';
-                                        return name.includes(searchTerm) || nameEn.includes(searchTerm) || symbol.includes(searchTerm);
-                                    });
-                                }
-
-                                filteredData = dataToRender;
-
-                                if (dataToRender.length === 0) {
-                                    document.getElementById('emptyState').style.display = 'block';
-                                    document.getElementById('priceGrid').innerHTML = '';
-                                } else {
-                                    document.getElementById('emptyState').style.display = 'none';
-                                    renderPrices(dataToRender);
-                                }
-                            }
-
-                            // Create Skeleton Card
-                            function createSkeletonCard() {
-                                const card = document.createElement('div');
-                                card.className = 'price-card skeleton-card';
-                                card.innerHTML = `
+                // Create Skeleton Card
+                function createSkeletonCard() {
+                    const card = document.createElement('div');
+                    card.className = 'price-card skeleton-card';
+                    card.innerHTML = `
                 <div class="skeleton-header">
                     <div class="skeleton-element skeleton-icon"></div>
                     <div class="skeleton-title">
@@ -2078,66 +2135,66 @@
                 <div class="skeleton-element skeleton-footer"></div>
                 <div class="skeleton-element skeleton-btn"></div>
             `;
-                                return card;
-                            }
+                    return card;
+                }
 
-                            // Render Price Cards
-                            function renderPrices(data) {
-                                const grid = document.getElementById('priceGrid');
-                                grid.innerHTML = '';
+                // Render Price Cards
+                function renderPrices(data) {
+                    const grid = document.getElementById('priceGrid');
+                    grid.innerHTML = '';
 
-                                data.forEach(item => {
-                                    const card = createPriceCard(item);
-                                    grid.appendChild(card);
-                                });
+                    data.forEach(item => {
+                        const card = createPriceCard(item);
+                        grid.appendChild(card);
+                    });
 
-                                // Setup image error handlers بعد از رندر - فوری و بعد از delay
-                                setupImageErrorHandlers();
-                                setTimeout(() => {
-                                    setupImageErrorHandlers();
-                                }, 100);
-                                setTimeout(() => {
-                                    setupImageErrorHandlers();
-                                }, 500);
-                            }
+                    // Setup image error handlers بعد از رندر - فوری و بعد از delay
+                    setupImageErrorHandlers();
+                    setTimeout(() => {
+                        setupImageErrorHandlers();
+                    }, 100);
+                    setTimeout(() => {
+                        setupImageErrorHandlers();
+                    }, 500);
+                }
 
-                            // Create Price Card Element
-                            function createPriceCard(item) {
-                                const card = document.createElement('div');
-                                card.className = 'price-card';
+                // Create Price Card Element
+                function createPriceCard(item) {
+                    const card = document.createElement('div');
+                    card.className = 'price-card';
 
-                                const change = parseFloat(item.change_percent) || 0;
-                                const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
-                                const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
+                    const change = parseFloat(item.change_percent) || 0;
+                    const changeClass = change > 0 ? 'up' : change < 0 ? 'down' : 'neutral';
+                    const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
 
-                                // ساخت آدرس آیکن از API (از path_icon در پاسخ API)
-                                let iconElement = '';
-                                if (item.path_icon) {
-                                    iconElement = loadIconWithFallback(item.path_icon, item.symbol);
-                                } else if (item.symbol) {
-                                    // Fallback: نمایش symbol به صورت متنی اگر icon موجود نباشد
-                                    iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">${item.symbol}</div>`;
-                                } else {
-                                    iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">💰</div>`;
-                                }
+                    // ساخت آدرس آیکن از API (از path_icon در پاسخ API)
+                    let iconElement = '';
+                    if (item.path_icon) {
+                        iconElement = loadIconWithFallback(item.path_icon, item.symbol);
+                    } else if (item.symbol) {
+                        // Fallback: نمایش symbol به صورت متنی اگر icon موجود نباشد
+                        iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">${item.symbol}</div>`;
+                    } else {
+                        iconElement = `<div style="width: 50px; height: 50px; border-radius: 10px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white; text-align: center; padding: 5px; word-break: break-word;">💰</div>`;
+                    }
 
-                                // برای ارزهای دیجیتال (crypto) دو قیمت نمایش بده (دلاری و تومانی)
-                                let price = item.price;
-                                let unit = item.unit;
-                                let priceDisplay = '';
+                    // برای ارزهای دیجیتال (crypto) دو قیمت نمایش بده (دلاری و تومانی)
+                    let price = item.price;
+                    let unit = item.unit;
+                    let priceDisplay = '';
 
-                                if (item.type === 'crypto') {
-                                    // قیمت دلاری
-                                    let dollarPrice = item.price;
-                                    if (item.symbol === 'USDT') {
-                                        dollarPrice = '1';
-                                    }
-                                    const formattedDollarPrice = formatPrice(dollarPrice);
+                    if (item.type === 'crypto') {
+                        // قیمت دلاری
+                        let dollarPrice = item.price;
+                        if (item.symbol === 'USDT') {
+                            dollarPrice = '1';
+                        }
+                        const formattedDollarPrice = formatPrice(dollarPrice);
 
-                                    // قیمت تومانی
-                                    const formattedTomanPrice = formatPrice(item.price_toman);
+                        // قیمت تومانی
+                        const formattedTomanPrice = formatPrice(item.price_toman);
 
-                                    priceDisplay = `
+                        priceDisplay = `
                     <div class="card-price">
                         ${formattedDollarPrice}
                         <span class="unit">دلار</span>
@@ -2147,19 +2204,19 @@
                         <span class="unit">تومان</span>
                     </div>
                 `;
-                                } else {
-                                    price = formatPrice(price);
-                                    priceDisplay = `
+                    } else {
+                        price = formatPrice(price);
+                        priceDisplay = `
                     <div class="card-price">
                         ${price}
                         <span class="unit">${unit}</span>
                     </div>
                 `;
-                                }
+                    }
 
-                                const changeValue = formatPrice(Math.abs(item.change_value || 0));
+                    const changeValue = formatPrice(Math.abs(item.change_value || 0));
 
-                                card.innerHTML = `
+                    card.innerHTML = `
                 <div class="card-header">
                     <div class="card-icon">
                         ${iconElement}
@@ -2198,455 +2255,581 @@
                 </button>
             `;
 
-                                return card;
-                            }
+                    return card;
+                }
 
-                            // Show Error
-                            function showError(message) {
-                                const grid = document.getElementById('priceGrid');
-                                grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: white; padding: 40px;">❌ ${message}</div>`;
-                            }
+                // Show Error
+                function showError(message) {
+                    const grid = document.getElementById('priceGrid');
+                    grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: white; padding: 40px;">❌ ${message}</div>`;
+                }
 
-                            // Open Chart Modal
-                            async function openChartModal(symbol, name) {
-                                document.getElementById('chartModalTitle').textContent = `نمودار قیمت - ${name}`;
-                                document.getElementById('chartModalSymbol').textContent = symbol;
-                                document.getElementById('chartModal').classList.add('active');
+                // Open Chart Modal
+                async function openChartModal(symbol, name) {
+                    document.getElementById('chartModalTitle').textContent = `نمودار قیمت - ${name}`;
+                    document.getElementById('chartModalSymbol').textContent = symbol;
+                    document.getElementById('chartModal').classList.add('active');
 
-                                // اضافه کردن overflow hidden به body
-                                document.body.classList.add('modal-open');
+                    // اضافه کردن overflow hidden به body
+                    document.body.classList.add('modal-open');
 
-                                // ذخیره state
-                                chartState.currentSymbol = symbol;
-                                chartState.currentName = name;
-                                chartState.currentChartType = 'line';
-                                chartState.currentTimeframe = '45m';
-                                currentZoom = 1;
+                    // ذخیره state
+                    chartState.currentSymbol = symbol;
+                    chartState.currentName = name;
+                    chartState.currentChartType = 'line';
+                    chartState.currentTimeframe = '1d';
+                    currentZoom = 1;
 
-                                // نمایش loading برای نمودار
-                                const chartContainer = document.querySelector('.chart-container');
-                                chartContainer.innerHTML = `
+                    // نمایش loading برای نمودار
+                    const chartContainer = document.querySelector('.chart-container');
+                    chartContainer.innerHTML = `
                 <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
                     <div style="width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                     <p style="color: #999; font-size: 14px;">در حال بارگذاری نمودار...</p>
                 </div>
             `;
 
-                                // Reset dropdowns
-                                document.getElementById('chartTypeLabel').textContent = 'خط';
-                                document.getElementById('timeframeLabel').textContent = '45د';
-                                document.getElementById('zoomLevel').textContent = '100%';
+                    // Reset dropdowns
+                    document.getElementById('chartTypeLabel').textContent = 'خط';
+                    document.getElementById('timeframeLabel').textContent = '1ر';
+                    document.getElementById('zoomLevel').textContent = '100%';
 
-                                document.querySelectorAll('#chartTypeDropdown .dropdown-item').forEach(item => {
-                                    item.classList.remove('active');
-                                    if (item.getAttribute('data-type') === 'line') {
-                                        item.classList.add('active');
-                                    }
-                                });
+                    document.querySelectorAll('#chartTypeDropdown .dropdown-item').forEach(item => {
+                        item.classList.remove('active');
+                        if (item.getAttribute('data-type') === 'line') {
+                            item.classList.add('active');
+                        }
+                    });
 
-                                document.querySelectorAll('#timeframeDropdown .dropdown-item').forEach(item => {
-                                    item.classList.remove('active');
-                                    if (item.getAttribute('data-timeframe') === '45m') {
-                                        item.classList.add('active');
-                                    }
-                                });
+                    document.querySelectorAll('#timeframeDropdown .dropdown-item').forEach(item => {
+                        item.classList.remove('active');
+                        if (item.getAttribute('data-timeframe') === '1d') {
+                            item.classList.add('active');
+                        }
+                    });
 
-                                // بارگذاری داده‌های اولیه
-                                await fetchHistoryData(symbol);
+                    // بارگذاری داده‌های اولیه
+                    await fetchHistoryData(symbol);
+                }
+
+                // Close Chart Modal
+                function closeChartModal() {
+                    document.getElementById('chartModal').classList.remove('active');
+                    // حذف overflow hidden از body
+                    document.body.classList.remove('modal-open');
+                }
+
+                // Fetch History Data - timeframe کے ساتھ
+                async function fetchHistoryData(symbol) {
+                    try {
+                        console.log(`📥 درخواست تاریخچه برای: ${symbol} - ${chartState.currentTimeframe}`);
+                        const chartContainer = document.querySelector('.chart-container');
+
+                        // تعیین نوع history بر اساس timeframe
+                        const timeframe = chartState.currentTimeframe;
+                        let historyType = 1; // پیش‌فرض: 24h
+                        let url = '';
+
+                        // اگر timeframe = 1d است
+                        // داده‌های 24 ساعتی از API مستقیم بگیر (history=1)
+                        if (timeframe === '1d') {
+                            console.log(`📱 دریافت 24 ساعته - history=1`);
+                            url = `${API_URL}?history=1&symbol=${symbol}`;
+                            historyType = 1;
+                        } else if (['1w', '1mo', '3mo', '6mo', '1y'].includes(timeframe)) {
+                            // برای روزی/هفتگی/ماهانه از OHLC استفاده کنیم
+                            console.log(`📅 دریافت تاریخچه روزی - history=2`);
+                            url = `${API_URL}?history=2&symbol=${symbol}&timeframe=${timeframe}`;
+                            historyType = 2;
+                        } else {
+                            // برای دقیقی/ساعاتی
+                            console.log(`🕐 دریافت تاریخچه دقیقی - history=1`);
+                            url = `${API_URL}?history=1&symbol=${symbol}&timeframe=${timeframe}`;
+                            historyType = 1;
+                        }
+
+                        console.log(`🔗 URL: ${url}`);
+                        const response = await fetch(url);
+                        const data = await response.json();
+
+                        console.log(`📊 پاسخ API (history=${historyType}, timeframe=${timeframe}):`, data);
+
+                        // بررسی داده‌های دریافتی
+                        let processedData = [];
+
+                        if (historyType === 2 && data.history_daily && Array.isArray(data.history_daily)) {
+                            // OHLC داده‌ها (روزی)
+                            console.log(`✅ داده‌های OHLC دریافت شد: ${data.history_daily.length} رکورد`);
+                            processedData = data.history_daily.map((item, idx) => ({
+                                date: item.date,
+                                time: '12:00', // برای روزی، وقت را 12:00 قرار می‌دهیم
+                                open: item.open,
+                                high: item.high,
+                                low: item.low,
+                                close: item.close,
+                                price: item.close,
+                                change_percent: ((item.close - item.open) / item.open * 100).toFixed(2)
+                            }));
+                        } else if (data.history_24h && Array.isArray(data.history_24h)) {
+                            // داده‌های 24 ساعتی
+                            console.log(`✅ داده‌های 24h دریافت شد: ${data.history_24h.length} رکورد`);
+                            processedData = data.history_24h;
+                        } else {
+                            console.error('❌ داده تاریخچه دریافت نشد یا خالی است');
+                            chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا: داده تاریخچه در دسترس نیست</p>';
+                            return;
+                        }
+
+                        // Sorting بر اساس تاریخ و وقت - ابتدائی sorting
+                        processedData.sort((a, b) => {
+                            // مقایسه string به صورت مستقیم (جلالی تاریخ YYYY/MM/DD فارمت میں ہے)
+                            if (a.date !== b.date) {
+                                return a.date.localeCompare(b.date);
                             }
+                            // اگر تاریخ برابر ہے تو time کا موازنہ کریں
+                            return (a.time || '00:00').localeCompare(b.time || '00:00');
+                        });
 
-                            // Close Chart Modal
-                            function closeChartModal() {
-                                document.getElementById('chartModal').classList.remove('active');
-                                // حذف overflow hidden از body
-                                document.body.classList.remove('modal-open');
+                        // فیلتر کریں فقط برای history=2 (روزی داده)
+                        // برای history=1 (24h)، تمام داده‌ها را نگاه دار
+                        if (historyType === 2) {
+                            processedData = filterDataByTimeframe(processedData, timeframe);
+                            console.log(`✅ فیلتر شده برای ${timeframe} (روزی): ${processedData.length} رکورد`);
+                        } else if (historyType === 1 && !['1d', '1m', '3m', '5m', '15m', '30m', '45m', '1h', '2h', '3h', '4h'].includes(timeframe)) {
+                            // برای history=1 اگر timeframe معلوم نیست، فیلتر کن
+                            processedData = filterDataByTimeframe(processedData, timeframe);
+                            console.log(`✅ فیلتر شده برای ${timeframe} (دقیقی): ${processedData.length} رکورد`);
+                        } else {
+                            console.log(`✅ داده‌های ${timeframe}: ${processedData.length} رکورد (فیلتر نشده)`);
+                        }
+
+                        chartState.historicalData = processedData;
+                        renderChart(processedData, symbol, data.name);
+                    } catch (error) {
+                        console.error('❌ خطا در بارگذاری تاریخچه:', error);
+                        const chartContainer = document.querySelector('.chart-container');
+                        chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در اتصال به سرور: ' + error.message + '</p>';
+                    }
+                }
+
+                // Filter data by timeframe
+                function filterDataByTimeframe(data, timeframe) {
+                    if (!data || data.length === 0) return data;
+
+                    // برای روزی/هفتگی/ماهانه ڈیٹا کے لیے
+                    const dayCounts = {
+                        '1d': 1,      // 24 ساعت اخیر = 1 روز
+                        '1w': 7,      // 7 روز قبل
+                        '1mo': 30,    // 30 روز قبل
+                        '3mo': 90,    // 90 روز قبل
+                        '6mo': 180,   // 180 روز قبل
+                        '1y': 365     // 365 روز قبل
+                    };
+
+                    // برای دقیقی/ساعاتی ڈیٹا کے لیے
+                    const minuteCounts = {
+                        '1m': 1,
+                        '3m': 3,
+                        '5m': 5,
+                        '15m': 15,
+                        '30m': 30,
+                        '45m': 45,
+                        '1h': 60,
+                        '2h': 120,
+                        '3h': 180,
+                        '4h': 240
+                    };
+
+                    // روزی ڈیٹا کے لیے
+                    if (dayCounts[timeframe]) {
+                        const dayCount = dayCounts[timeframe];
+                        // آخری N رکورد برگردان (ہر رکورڈ ایک دن ہے)
+                        const filtered = data.slice(-dayCount);
+                        console.log(`📅 فیلتر شده برای ${timeframe}: آخری ${filtered.length} روز`);
+                        return filtered;
+                    }
+
+                    // دقیقی ڈیٹا کے لیے
+                    if (minuteCounts[timeframe]) {
+                        const minuteCount = minuteCounts[timeframe];
+                        // آخری N رکورد برگردان
+                        const filtered = data.slice(-minuteCount);
+                        console.log(`🕐 فیلتر شده برای ${timeframe}: آخری ${filtered.length} منٹ`);
+                        return filtered;
+                    }
+
+                    // Default: تمام ڈیٹا
+                    return data;
+                }
+
+                // Prepare OHLC data for candlestick charts
+                function prepareOHLCData(data, timeframe) {
+                    // ساده‌سازی برای اکنون - بعداً باید از API داده‌های OHLC را بگیرید
+                    const ohlcData = [];
+
+                    for (let i = 0; i < Math.min(data.length - 1, data.length); i++) {
+                        const current = data[i];
+                        const next = data[i + 1];
+
+                        const price = parseFloat(current.price);
+                        const nextPrice = parseFloat(next.price);
+
+                        ohlcData.push({
+                            date: current.date,
+                            time: current.time,
+                            open: price,
+                            high: Math.max(price, nextPrice),
+                            low: Math.min(price, nextPrice),
+                            close: nextPrice,
+                            change_percent: current.change_percent,
+                            originalData: current
+                        });
+                    }
+
+                    return ohlcData;
+                }
+
+                // Render Chart with different chart types - بهتر‌شده برای responsive
+                function renderChart(historyData, symbol, name) {
+                    const chartContainer = document.querySelector('.chart-container');
+
+                    // حذف نمودار قبلی
+                    if (chartInstance) {
+                        chartInstance.destroy();
+                    }
+
+                    // حذف skeleton loading و بازسازی canvas
+                    chartContainer.innerHTML = '<canvas id="priceChart"></canvas>';
+
+                    const canvas = document.getElementById('priceChart');
+                    const ctx = canvas.getContext('2d');
+
+                    // بدون reverse - داده‌ها قبلاً sorted شده‌اند
+                    const sortedData = [...historyData];
+
+                    // آماده‌سازی داده‌ها
+                    let chartConfig = {};
+
+                    const labels = sortedData.map(item => {
+                        const time = item.time ? item.time.substring(0, 5) : item.date ? item.date.substring(5) : '--';
+                        return time;
+                    });
+
+                    const prices = sortedData.map(item => parseFloat(item.price || item.close || 0));
+
+                    // انتخاب نوع نمودار
+                    switch (chartState.currentChartType) {
+                        case 'line':
+                            chartConfig = createLineChart(labels, prices, name, symbol, sortedData);
+                            break;
+                        case 'line-markers':
+                            chartConfig = createLineWithMarkersChart(labels, prices, name, symbol, sortedData);
+                            break;
+                        case 'step-line':
+                            chartConfig = createStepLineChart(labels, prices, name, symbol, sortedData);
+                            break;
+                        case 'area':
+                            chartConfig = createAreaChart(labels, prices, name, symbol, sortedData);
+                            break;
+                        case 'bars':
+                            chartConfig = createBarsChart(labels, prices, name, symbol, sortedData);
+                            break;
+                        case 'columns':
+                            chartConfig = createColumnsChart(labels, prices, name, symbol, sortedData);
+                            break;
+                        case 'candles':
+                        case 'hollow-candles':
+                            // برای شمع‌ها OHLC داده استفاده می‌شود
+                            chartConfig = createCandleChart(labels, sortedData, name, symbol);
+                            break;
+                        default:
+                            chartConfig = createLineChart(labels, prices, name, symbol, sortedData);
+                    }
+
+                    // ایجاد نمودار جدید
+                    chartInstance = new Chart(ctx, chartConfig);
+
+                    // اضافه کردن crosshair functionality
+                    setupChartCrosshair(chartInstance, sortedData);
+                }
+
+                // Chart creation functions
+                function createLineChart(labels, prices, name, symbol, sortedData) {
+                    return {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: `قیمت ${name} (${symbol})`,
+                                data: prices,
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                borderWidth: 2.5,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0,
+                                pointHoverRadius: 6,
+                                pointBackgroundColor: '#667eea',
+                                pointBorderColor: 'white',
+                                pointBorderWidth: 2,
+                                hoverBorderWidth: 3
+                            }]
+                        },
+                        options: getDefaultChartOptions(name, symbol, sortedData, 'line')
+                    };
+                }
+
+                function createLineWithMarkersChart(labels, prices, name, symbol, sortedData) {
+                    return {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: `قیمت ${name} (${symbol})`,
+                                data: prices,
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                borderWidth: 2.5,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 4,
+                                pointHoverRadius: 7,
+                                pointBackgroundColor: '#667eea',
+                                pointBorderColor: 'white',
+                                pointBorderWidth: 2,
+                                hoverBorderWidth: 3
+                            }]
+                        },
+                        options: getDefaultChartOptions(name, symbol, sortedData, 'line-markers')
+                    };
+                }
+
+                function createStepLineChart(labels, prices, name, symbol, sortedData) {
+                    return {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: `قیمت ${name} (${symbol})`,
+                                data: prices,
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                borderWidth: 2.5,
+                                fill: true,
+                                stepped: true,
+                                tension: 0,
+                                pointRadius: 0,
+                                pointHoverRadius: 6,
+                                pointBackgroundColor: '#667eea',
+                                pointBorderColor: 'white',
+                                pointBorderWidth: 2,
+                                hoverBorderWidth: 3
+                            }]
+                        },
+                        options: getDefaultChartOptions(name, symbol, sortedData, 'step-line')
+                    };
+                }
+
+                function createAreaChart(labels, prices, name, symbol, sortedData) {
+                    return {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: `قیمت ${name} (${symbol})`,
+                                data: prices,
+                                borderColor: '#764ba2',
+                                backgroundColor: 'rgba(118, 75, 162, 0.3)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0,
+                                pointHoverRadius: 6,
+                                pointBackgroundColor: '#764ba2',
+                                pointBorderColor: 'white',
+                                pointBorderWidth: 2,
+                                hoverBorderWidth: 3
+                            }]
+                        },
+                        options: getDefaultChartOptions(name, symbol, sortedData, 'area')
+                    };
+                }
+
+                function createBarsChart(labels, prices, name, symbol, sortedData) {
+                    return {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: `قیمت ${name} (${symbol})`,
+                                data: prices,
+                                backgroundColor: prices.map((price, idx) =>
+                                    idx === 0 || prices[idx] >= prices[idx - 1] ? '#10b981' : '#ef4444'
+                                ),
+                                borderRadius: 2,
+                                barThickness: 'flex',
+                                maxBarThickness: 20
+                            }]
+                        },
+                        options: getDefaultChartOptions(name, symbol, sortedData, 'bars', true)
+                    };
+                }
+
+                function createColumnsChart(labels, prices, name, symbol, sortedData) {
+                    return {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: `قیمت ${name} (${symbol})`,
+                                data: prices,
+                                backgroundColor: prices.map((price, idx) =>
+                                    idx === 0 || prices[idx] >= prices[idx - 1] ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)'
+                                ),
+                                borderRadius: 4,
+                                barThickness: 'flex',
+                                maxBarThickness: 16
+                            }]
+                        },
+                        options: getDefaultChartOptions(name, symbol, sortedData, 'columns', true)
+                    };
+                }
+
+                function createCandleChart(labels, sortedData, name, symbol) {
+                    // شمع‌های درست - open/close بر اساس رنگ
+                    const candleData = sortedData.map((item, idx) => {
+                        // اگر OHLC ڈیٹا ہے تو استعمال کریں
+                        if (item.open !== undefined && item.close !== undefined) {
+                            return {
+                                o: parseFloat(item.open),
+                                h: parseFloat(item.high),
+                                l: parseFloat(item.low),
+                                c: parseFloat(item.close),
+                                color: parseFloat(item.close) >= parseFloat(item.open) ? '#10b981' : '#ef4444'
+                            };
+                        }
+
+                        // یا اگر صرف price ہے
+                        const price = parseFloat(item.price || item.close || 0);
+                        const prevPrice = idx > 0 ? parseFloat(sortedData[idx - 1].price || sortedData[idx - 1].close || 0) : price;
+
+                        return {
+                            o: prevPrice,
+                            h: Math.max(price, prevPrice),
+                            l: Math.min(price, prevPrice),
+                            c: price,
+                            color: price >= prevPrice ? '#10b981' : '#ef4444'
+                        };
+                    });
+
+                    // استفاده کریں bar chart شمع‌ وں کے لیے
+                    return {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: `قیمت ${name} (${symbol})`,
+                                data: candleData.map(c => c.c),
+                                backgroundColor: candleData.map(c => c.color),
+                                borderColor: candleData.map(c => c.color),
+                                borderWidth: 1,
+                                borderRadius: 2,
+                                barThickness: 'flex',
+                                maxBarThickness: 8
+                            }]
+                        },
+                        options: getDefaultChartOptions(name, symbol, sortedData, 'candles', true)
+                    };
+                }
+
+                function getDefaultChartOptions(name, symbol, sortedData, chartType, isBar = false) {
+                    return {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                labels: {
+                                    font: { family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", size: 14, weight: 'bold' },
+                                    padding: 15,
+                                    usePointStyle: true,
+                                    color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333'
+                                }
+                            },
+                            tooltip: {
+                                enabled: false // غیرفعال کردن tooltip پیش‌فرض برای crosshair
                             }
-
-                            // Fetch History Data (24-hour history)
-                            async function fetchHistoryData(symbol) {
-                                try {
-                                    console.log(`📥 درخواست تاریخچه برای: ${symbol} - ${chartState.currentTimeframe}`);
-                                    const chartContainer = document.querySelector('.chart-container');
-
-                                    // درخواست از Worker proxy
-                                    const response = await fetch(`${API_URL}?history=1&symbol=${symbol}&timeframe=${chartState.currentTimeframe}`);
-                                    const data = await response.json();
-
-                                    console.log(`📊 پاسخ API:`, data);
-
-                                    // API تاریخچه بدون successful بازمی‌گرداند - فقط بررسی history_24h
-                                    if (data && data.history_24h && Array.isArray(data.history_24h) && data.history_24h.length > 0) {
-                                        console.log(`✅ داده‌های تاریخچه دریافت شد: ${data.history_24h.length} رکورد`);
-                                        chartState.historicalData = data.history_24h;
-                                        renderChart(data.history_24h, symbol, data.name);
-                                    } else if (data.error || data.message_error) {
-                                        console.error('❌ خطای API:', data.error || data.message_error);
-                                        chartContainer.innerHTML = `<p style="text-align:center; color:#666;">⚠️ ${data.error || data.message_error}</p>`;
-                                    } else {
-                                        console.error('❌ داده تاریخچه دریافت نشد یا خالی است:', data);
-                                        chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا: داده تاریخچه در دسترس نیست</p>';
-                                    }
-                                } catch (error) {
-                                    console.error('❌ خطا در بارگذاری تاریخچه:', error);
-                                    const chartContainer = document.querySelector('.chart-container');
-                                    chartContainer.innerHTML = '<p style="text-align:center; color:#666;">⚠️ خطا در اتصال به سرور: ' + error.message + '</p>';
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                title: {
+                                    display: true,
+                                    text: 'قیمت (تومان)',
+                                    color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333'
+                                },
+                                ticks: {
+                                    callback: function (value) {
+                                        return formatPrice(value);
+                                    },
+                                    font: { size: 11 },
+                                    color: document.body.classList.contains('dark-mode') ? '#aaa' : '#666'
+                                },
+                                grid: {
+                                    color: document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    font: { size: 11 },
+                                    color: document.body.classList.contains('dark-mode') ? '#aaa' : '#666'
+                                },
+                                grid: {
+                                    display: false
                                 }
                             }
+                        }
+                    };
+                }
 
-                            // Prepare OHLC data for candlestick charts
-                            function prepareOHLCData(data, timeframe) {
-                                // ساده‌سازی برای اکنون - بعداً باید از API داده‌های OHLC را بگیرید
-                                const ohlcData = [];
+                // Setup Crosshair Functionality
+                function setupChartCrosshair(chart, sortedData) {
+                    const canvas = chart.canvas;
+                    const container = canvas.parentElement;
 
-                                for (let i = 0; i < Math.min(data.length - 1, data.length); i++) {
-                                    const current = data[i];
-                                    const next = data[i + 1];
+                    let tooltip = document.querySelector('.chart-tooltip');
+                    if (!tooltip) {
+                        tooltip = document.createElement('div');
+                        tooltip.className = 'chart-tooltip';
+                        container.style.position = 'relative';
+                        container.appendChild(tooltip);
+                    }
 
-                                    const price = parseFloat(current.price);
-                                    const nextPrice = parseFloat(next.price);
+                    canvas.addEventListener('mousemove', (e) => {
+                        const rect = canvas.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
 
-                                    ohlcData.push({
-                                        date: current.date,
-                                        time: current.time,
-                                        open: price,
-                                        high: Math.max(price, nextPrice),
-                                        low: Math.min(price, nextPrice),
-                                        close: nextPrice,
-                                        change_percent: current.change_percent,
-                                        originalData: current
-                                    });
-                                }
+                        // محاسبه نزدیک‌ترین نقطه
+                        const canvasPosition = Chart.helpers.getRelativePosition(e, chart);
+                        const dataX = chart.scales.x.getValueForPixel(canvasPosition.x);
+                        const dataY = chart.scales.y.getValueForPixel(canvasPosition.y);
 
-                                return ohlcData;
-                            }
+                        // پیدا کردن نزدیک‌ترین نقطه داده
+                        let closestIndex = Math.round(dataX);
+                        closestIndex = Math.max(0, Math.min(closestIndex, sortedData.length - 1));
 
-                            // Render Chart with different chart types
-                            function renderChart(historyData, symbol, name) {
-                                const chartContainer = document.querySelector('.chart-container');
+                        if (closestIndex >= 0 && closestIndex < sortedData.length) {
+                            const data = sortedData[closestIndex];
+                            const price = parseFloat(data.price);
+                            const change = parseFloat(data.change_percent);
+                            const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
 
-                                // حذف skeleton loading و بازسازی canvas
-                                chartContainer.innerHTML = '<canvas id="priceChart"></canvas>';
-
-                                const ctx = document.getElementById('priceChart').getContext('2d');
-
-                                // ترتیب معکوس: از قدیمی‌تر به جدید‌تر
-                                const sortedData = [...historyData].reverse();
-
-                                // آماده‌سازی داده‌ها بر اساس نوع نمودار
-                                let chartConfig = {};
-
-                                const labels = sortedData.map(item => {
-                                    const time = item.time ? item.time.substring(0, 5) : '--';
-                                    return time;
-                                });
-
-                                const prices = sortedData.map(item => parseFloat(item.price));
-                                const changes = sortedData.map(item => item.change_percent);
-
-                                // حذف نمودار قبلی
-                                if (chartInstance) {
-                                    chartInstance.destroy();
-                                }
-
-                                // انتخاب نوع نمودار
-                                switch (chartState.currentChartType) {
-                                    case 'line':
-                                        chartConfig = createLineChart(labels, prices, name, symbol, sortedData);
-                                        break;
-                                    case 'line-markers':
-                                        chartConfig = createLineWithMarkersChart(labels, prices, name, symbol, sortedData);
-                                        break;
-                                    case 'step-line':
-                                        chartConfig = createStepLineChart(labels, prices, name, symbol, sortedData);
-                                        break;
-                                    case 'area':
-                                        chartConfig = createAreaChart(labels, prices, name, symbol, sortedData);
-                                        break;
-                                    case 'bars':
-                                        chartConfig = createBarsChart(labels, prices, name, symbol, sortedData);
-                                        break;
-                                    case 'columns':
-                                        chartConfig = createColumnsChart(labels, prices, name, symbol, sortedData);
-                                        break;
-                                    case 'candles':
-                                    case 'hollow-candles':
-                                        // برای شمع‌ها باید OHLC داده بگیریم
-                                        chartConfig = createCandleChart(labels, sortedData, name, symbol);
-                                        break;
-                                    default:
-                                        chartConfig = createLineChart(labels, prices, name, symbol, sortedData);
-                                }
-
-                                // ایجاد نمودار جدید
-                                chartInstance = new Chart(ctx, chartConfig);
-
-                                // اضافه کردن crosshair functionality
-                                setupChartCrosshair(chartInstance, sortedData);
-                            }
-
-                            // Chart creation functions
-                            function createLineChart(labels, prices, name, symbol, sortedData) {
-                                return {
-                                    type: 'line',
-                                    data: {
-                                        labels: labels,
-                                        datasets: [{
-                                            label: `قیمت ${name} (${symbol})`,
-                                            data: prices,
-                                            borderColor: '#667eea',
-                                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                                            borderWidth: 2.5,
-                                            fill: true,
-                                            tension: 0.4,
-                                            pointRadius: 0,
-                                            pointHoverRadius: 6,
-                                            pointBackgroundColor: '#667eea',
-                                            pointBorderColor: 'white',
-                                            pointBorderWidth: 2,
-                                            hoverBorderWidth: 3
-                                        }]
-                                    },
-                                    options: getDefaultChartOptions(name, symbol, sortedData, 'line')
-                                };
-                            }
-
-                            function createLineWithMarkersChart(labels, prices, name, symbol, sortedData) {
-                                return {
-                                    type: 'line',
-                                    data: {
-                                        labels: labels,
-                                        datasets: [{
-                                            label: `قیمت ${name} (${symbol})`,
-                                            data: prices,
-                                            borderColor: '#667eea',
-                                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                                            borderWidth: 2.5,
-                                            fill: true,
-                                            tension: 0.4,
-                                            pointRadius: 4,
-                                            pointHoverRadius: 7,
-                                            pointBackgroundColor: '#667eea',
-                                            pointBorderColor: 'white',
-                                            pointBorderWidth: 2,
-                                            hoverBorderWidth: 3
-                                        }]
-                                    },
-                                    options: getDefaultChartOptions(name, symbol, sortedData, 'line-markers')
-                                };
-                            }
-
-                            function createStepLineChart(labels, prices, name, symbol, sortedData) {
-                                return {
-                                    type: 'line',
-                                    data: {
-                                        labels: labels,
-                                        datasets: [{
-                                            label: `قیمت ${name} (${symbol})`,
-                                            data: prices,
-                                            borderColor: '#667eea',
-                                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                                            borderWidth: 2.5,
-                                            fill: true,
-                                            stepped: true,
-                                            tension: 0,
-                                            pointRadius: 0,
-                                            pointHoverRadius: 6,
-                                            pointBackgroundColor: '#667eea',
-                                            pointBorderColor: 'white',
-                                            pointBorderWidth: 2,
-                                            hoverBorderWidth: 3
-                                        }]
-                                    },
-                                    options: getDefaultChartOptions(name, symbol, sortedData, 'step-line')
-                                };
-                            }
-
-                            function createAreaChart(labels, prices, name, symbol, sortedData) {
-                                return {
-                                    type: 'line',
-                                    data: {
-                                        labels: labels,
-                                        datasets: [{
-                                            label: `قیمت ${name} (${symbol})`,
-                                            data: prices,
-                                            borderColor: '#764ba2',
-                                            backgroundColor: 'rgba(118, 75, 162, 0.3)',
-                                            borderWidth: 3,
-                                            fill: true,
-                                            tension: 0.4,
-                                            pointRadius: 0,
-                                            pointHoverRadius: 6,
-                                            pointBackgroundColor: '#764ba2',
-                                            pointBorderColor: 'white',
-                                            pointBorderWidth: 2,
-                                            hoverBorderWidth: 3
-                                        }]
-                                    },
-                                    options: getDefaultChartOptions(name, symbol, sortedData, 'area')
-                                };
-                            }
-
-                            function createBarsChart(labels, prices, name, symbol, sortedData) {
-                                return {
-                                    type: 'bar',
-                                    data: {
-                                        labels: labels,
-                                        datasets: [{
-                                            label: `قیمت ${name} (${symbol})`,
-                                            data: prices,
-                                            backgroundColor: prices.map((price, idx) =>
-                                                idx === 0 || prices[idx] >= prices[idx - 1] ? '#10b981' : '#ef4444'
-                                            ),
-                                            borderRadius: 2,
-                                            barThickness: 'flex',
-                                            maxBarThickness: 20
-                                        }]
-                                    },
-                                    options: getDefaultChartOptions(name, symbol, sortedData, 'bars', true)
-                                };
-                            }
-
-                            function createColumnsChart(labels, prices, name, symbol, sortedData) {
-                                return {
-                                    type: 'bar',
-                                    data: {
-                                        labels: labels,
-                                        datasets: [{
-                                            label: `قیمت ${name} (${symbol})`,
-                                            data: prices,
-                                            backgroundColor: prices.map((price, idx) =>
-                                                idx === 0 || prices[idx] >= prices[idx - 1] ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)'
-                                            ),
-                                            borderRadius: 4,
-                                            barThickness: 'flex',
-                                            maxBarThickness: 16
-                                        }]
-                                    },
-                                    options: getDefaultChartOptions(name, symbol, sortedData, 'columns', true)
-                                };
-                            }
-
-                            function createCandleChart(labels, sortedData, name, symbol) {
-                                // ساده‌سازی برای شمع‌ها - از داده موجود استفاده می‌کنیم
-                                const candleData = sortedData.map((item, idx) => {
-                                    const price = parseFloat(item.price);
-                                    const prevPrice = idx > 0 ? parseFloat(sortedData[idx - 1].price) : price;
-
-                                    return {
-                                        x: item.time ? item.time.substring(0, 5) : '--',
-                                        o: prevPrice,
-                                        h: Math.max(price, prevPrice),
-                                        l: Math.min(price, prevPrice),
-                                        c: price
-                                    };
-                                });
-
-                                return {
-                                    type: 'line',
-                                    data: {
-                                        labels: labels,
-                                        datasets: [{
-                                            label: `قیمت ${name} (${symbol})`,
-                                            data: candleData.map(c => c.c),
-                                            borderColor: '#667eea',
-                                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                                            borderWidth: 2,
-                                            fill: false,
-                                            pointRadius: 0
-                                        }]
-                                    },
-                                    options: getDefaultChartOptions(name, symbol, sortedData, 'candles')
-                                };
-                            }
-
-                            function getDefaultChartOptions(name, symbol, sortedData, chartType, isBar = false) {
-                                return {
-                                    responsive: true,
-                                    maintainAspectRatio: false,
-                                    interaction: {
-                                        mode: 'index',
-                                        intersect: false
-                                    },
-                                    plugins: {
-                                        legend: {
-                                            display: true,
-                                            labels: {
-                                                font: { family: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", size: 14, weight: 'bold' },
-                                                padding: 15,
-                                                usePointStyle: true,
-                                                color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333'
-                                            }
-                                        },
-                                        tooltip: {
-                                            enabled: false // غیرفعال کردن tooltip پیش‌فرض برای crosshair
-                                        }
-                                    },
-                                    scales: {
-                                        y: {
-                                            beginAtZero: false,
-                                            title: {
-                                                display: true,
-                                                text: 'قیمت (تومان)',
-                                                color: document.body.classList.contains('dark-mode') ? '#e0e0e0' : '#333'
-                                            },
-                                            ticks: {
-                                                callback: function (value) {
-                                                    return formatPrice(value);
-                                                },
-                                                font: { size: 11 },
-                                                color: document.body.classList.contains('dark-mode') ? '#aaa' : '#666'
-                                            },
-                                            grid: {
-                                                color: document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
-                                            }
-                                        },
-                                        x: {
-                                            ticks: {
-                                                font: { size: 11 },
-                                                color: document.body.classList.contains('dark-mode') ? '#aaa' : '#666'
-                                            },
-                                            grid: {
-                                                display: false
-                                            }
-                                        }
-                                    }
-                                };
-                            }
-
-                            // Setup Crosshair Functionality
-                            function setupChartCrosshair(chart, sortedData) {
-                                const canvas = chart.canvas;
-                                const container = canvas.parentElement;
-
-                                let tooltip = document.querySelector('.chart-tooltip');
-                                if (!tooltip) {
-                                    tooltip = document.createElement('div');
-                                    tooltip.className = 'chart-tooltip';
-                                    container.style.position = 'relative';
-                                    container.appendChild(tooltip);
-                                }
-
-                                canvas.addEventListener('mousemove', (e) => {
-                                    const rect = canvas.getBoundingClientRect();
-                                    const x = e.clientX - rect.left;
-                                    const y = e.clientY - rect.top;
-
-                                    // محاسبه نزدیک‌ترین نقطه
-                                    const canvasPosition = Chart.helpers.getRelativePosition(e, chart);
-                                    const dataX = chart.scales.x.getValueForPixel(canvasPosition.x);
-                                    const dataY = chart.scales.y.getValueForPixel(canvasPosition.y);
-
-                                    // پیدا کردن نزدیک‌ترین نقطه داده
-                                    let closestIndex = Math.round(dataX);
-                                    closestIndex = Math.max(0, Math.min(closestIndex, sortedData.length - 1));
-
-                                    if (closestIndex >= 0 && closestIndex < sortedData.length) {
-                                        const data = sortedData[closestIndex];
-                                        const price = parseFloat(data.price);
-                                        const change = parseFloat(data.change_percent);
-                                        const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
-
-                                        tooltip.innerHTML = `
+                            tooltip.innerHTML = `
                         <div class="chart-tooltip-row">
                             <span class="chart-tooltip-label">⏰ وقت:</span>
                             <span class="chart-tooltip-value">${data.date} ${data.time}</span>
@@ -2661,35 +2844,35 @@
                         </div>
                     `;
 
-                                        tooltip.style.left = (x + 10) + 'px';
-                                        tooltip.style.top = (y - 80) + 'px';
-                                        tooltip.classList.add('visible');
-                                    }
-                                });
+                            tooltip.style.left = (x + 10) + 'px';
+                            tooltip.style.top = (y - 80) + 'px';
+                            tooltip.classList.add('visible');
+                        }
+                    });
 
-                                canvas.addEventListener('mouseleave', () => {
-                                    tooltip.classList.remove('visible');
-                                });
+                    canvas.addEventListener('mouseleave', () => {
+                        tooltip.classList.remove('visible');
+                    });
 
-                                // Touch support for mobile
-                                canvas.addEventListener('touchmove', (e) => {
-                                    const touch = e.touches[0];
-                                    const rect = canvas.getBoundingClientRect();
-                                    const x = touch.clientX - rect.left;
-                                    const y = touch.clientY - rect.top;
+                    // Touch support for mobile
+                    canvas.addEventListener('touchmove', (e) => {
+                        const touch = e.touches[0];
+                        const rect = canvas.getBoundingClientRect();
+                        const x = touch.clientX - rect.left;
+                        const y = touch.clientY - rect.top;
 
-                                    const canvasPosition = Chart.helpers.getRelativePosition(touch, chart);
-                                    const dataX = chart.scales.x.getValueForPixel(canvasPosition.x);
-                                    let closestIndex = Math.round(dataX);
-                                    closestIndex = Math.max(0, Math.min(closestIndex, sortedData.length - 1));
+                        const canvasPosition = Chart.helpers.getRelativePosition(touch, chart);
+                        const dataX = chart.scales.x.getValueForPixel(canvasPosition.x);
+                        let closestIndex = Math.round(dataX);
+                        closestIndex = Math.max(0, Math.min(closestIndex, sortedData.length - 1));
 
-                                    if (closestIndex >= 0 && closestIndex < sortedData.length) {
-                                        const data = sortedData[closestIndex];
-                                        const price = parseFloat(data.price);
-                                        const change = parseFloat(data.change_percent);
-                                        const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
+                        if (closestIndex >= 0 && closestIndex < sortedData.length) {
+                            const data = sortedData[closestIndex];
+                            const price = parseFloat(data.price);
+                            const change = parseFloat(data.change_percent);
+                            const changeIcon = change > 0 ? '📈' : change < 0 ? '📉' : '⚖️';
 
-                                        tooltip.innerHTML = `
+                            tooltip.innerHTML = `
                         <div class="chart-tooltip-row">
                             <span class="chart-tooltip-label">⏰ وقت:</span>
                             <span class="chart-tooltip-value">${data.date} ${data.time}</span>
@@ -2704,350 +2887,361 @@
                         </div>
                     `;
 
-                                        tooltip.style.left = (x + 10) + 'px';
-                                        tooltip.style.top = (y - 80) + 'px';
-                                        tooltip.classList.add('visible');
-                                    }
-                                });
+                            tooltip.style.left = (x + 10) + 'px';
+                            tooltip.style.top = (y - 80) + 'px';
+                            tooltip.classList.add('visible');
+                        }
+                    });
 
-                                canvas.addEventListener('touchend', () => {
-                                    tooltip.classList.remove('visible');
-                                });
-                            }
+                    canvas.addEventListener('touchend', () => {
+                        tooltip.classList.remove('visible');
+                    });
+                }
 
-                            // Handle Chart Type Button Clicks
-                            // ===== Dropdown Functions =====
-                            function toggleChartTypeDropdown() {
-                                const dropdown = document.getElementById('chartTypeDropdown');
-                                const toggle = document.getElementById('chartTypeToggle');
-                                dropdown.classList.toggle('active');
-                                toggle.classList.toggle('active');
-                                closeTimeframeDropdown();
-                            }
+                // Handle Chart Type Button Clicks
+                // ===== Dropdown Functions =====
+                function toggleChartTypeDropdown() {
+                    const dropdown = document.getElementById('chartTypeDropdown');
+                    const toggle = document.getElementById('chartTypeToggle');
+                    dropdown.classList.toggle('active');
+                    toggle.classList.toggle('active');
+                    closeTimeframeDropdown();
+                }
 
-                            function toggleTimeframeDropdown() {
-                                const dropdown = document.getElementById('timeframeDropdown');
-                                const toggle = document.getElementById('timeframeToggle');
-                                dropdown.classList.toggle('active');
-                                toggle.classList.toggle('active');
-                                closeChartTypeDropdown();
-                            }
+                function toggleTimeframeDropdown() {
+                    const dropdown = document.getElementById('timeframeDropdown');
+                    const toggle = document.getElementById('timeframeToggle');
+                    dropdown.classList.toggle('active');
+                    toggle.classList.toggle('active');
+                    closeChartTypeDropdown();
+                }
 
-                            function closeChartTypeDropdown() {
-                                const dropdown = document.getElementById('chartTypeDropdown');
-                                const toggle = document.getElementById('chartTypeToggle');
-                                dropdown.classList.remove('active');
-                                toggle.classList.remove('active');
-                            }
+                function closeChartTypeDropdown() {
+                    const dropdown = document.getElementById('chartTypeDropdown');
+                    const toggle = document.getElementById('chartTypeToggle');
+                    dropdown.classList.remove('active');
+                    toggle.classList.remove('active');
+                }
 
-                            function closeTimeframeDropdown() {
-                                const dropdown = document.getElementById('timeframeDropdown');
-                                const toggle = document.getElementById('timeframeToggle');
-                                dropdown.classList.remove('active');
-                                toggle.classList.remove('active');
-                            }
+                function closeTimeframeDropdown() {
+                    const dropdown = document.getElementById('timeframeDropdown');
+                    const toggle = document.getElementById('timeframeToggle');
+                    dropdown.classList.remove('active');
+                    toggle.classList.remove('active');
+                }
 
-                            function selectChartType(type) {
-                                chartState.currentChartType = type;
-                                document.getElementById('chartTypeLabel').textContent =
-                                    document.querySelector(`[data-type="${type}"]`).textContent;
+                function selectChartType(type) {
+                    chartState.currentChartType = type;
+                    document.getElementById('chartTypeLabel').textContent =
+                        document.querySelector(`[data-type="${type}"]`).textContent;
 
-                                document.querySelectorAll('#chartTypeDropdown .dropdown-item').forEach(item => {
-                                    item.classList.remove('active');
-                                    if (item.getAttribute('data-type') === type) {
-                                        item.classList.add('active');
-                                    }
-                                });
+                    document.querySelectorAll('#chartTypeDropdown .dropdown-item').forEach(item => {
+                        item.classList.remove('active');
+                        if (item.getAttribute('data-type') === type) {
+                            item.classList.add('active');
+                        }
+                    });
 
-                                closeChartTypeDropdown();
-                                if (chartState.historicalData.length > 0) {
-                                    renderChart(chartState.historicalData, chartState.currentSymbol, chartState.currentName);
-                                }
-                            }
+                    closeChartTypeDropdown();
+                    if (chartState.historicalData.length > 0) {
+                        renderChart(chartState.historicalData, chartState.currentSymbol, chartState.currentName);
+                    }
+                }
 
-                            function selectTimeframe(timeframe) {
-                                chartState.currentTimeframe = timeframe;
-                                const timeframeLabels = {
-                                    '1m': '1د', '3m': '3د', '5m': '5د', '15m': '15د', '30m': '30د', '45m': '45د',
-                                    '1h': '1س', '2h': '2س', '3h': '3س', '4h': '4س',
-                                    '1d': '1ر', '1w': '1ه', '1mo': '1م', '3mo': '3م', '6mo': '6م', '1y': '1س'
-                                };
-                                document.getElementById('timeframeLabel').textContent = timeframeLabels[timeframe] || timeframe;
+                function selectTimeframe(timeframe) {
+                    chartState.currentTimeframe = timeframe;
+                    const timeframeLabels = {
+                        '1m': '1د', '3m': '3د', '5m': '5د', '15m': '15د', '30m': '30د', '45m': '45د',
+                        '1h': '1س', '2h': '2س', '3h': '3س', '4h': '4س',
+                        '1d': '1ر', '1w': '1ه', '1mo': '1م', '3mo': '3م', '6mo': '6م', '1y': '1س'
+                    };
+                    document.getElementById('timeframeLabel').textContent = timeframeLabels[timeframe] || timeframe;
 
-                                document.querySelectorAll('#timeframeDropdown .dropdown-item').forEach(item => {
-                                    item.classList.remove('active');
-                                    if (item.getAttribute('data-timeframe') === timeframe) {
-                                        item.classList.add('active');
-                                    }
-                                });
+                    document.querySelectorAll('#timeframeDropdown .dropdown-item').forEach(item => {
+                        item.classList.remove('active');
+                        if (item.getAttribute('data-timeframe') === timeframe) {
+                            item.classList.add('active');
+                        }
+                    });
 
-                                closeTimeframeDropdown();
+                    closeTimeframeDropdown();
 
-                                // نمایش loading
-                                const chartContainer = document.querySelector('.chart-container');
-                                chartContainer.innerHTML = `
+                    // نمایش loading
+                    const chartContainer = document.querySelector('.chart-container');
+                    chartContainer.innerHTML = `
                                     <div style="display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 20px;">
                                         <div style="width: 40px; height: 40px; border: 4px solid #e0e0e0; border-top-color: #667eea; border-radius: 50%; animation: spin 1s linear infinite;"></div>
                                         <p style="color: #999; font-size: 14px;">در حال بارگذاری نمودار...</p>
                                     </div>
                                 `;
 
-                                // بارگذاری داده‌های جدید
-                                fetchHistoryData(chartState.currentSymbol);
+                    // بارگذاری داده‌های جدید
+                    fetchHistoryData(chartState.currentSymbol);
+                }
+
+                // ===== Zoom Functions =====
+                let currentZoom = 1;
+
+                function zoomChart(factor) {
+                    currentZoom *= factor;
+                    currentZoom = Math.max(0.5, Math.min(2.5, currentZoom)); // حداقل 0.5x و حداکثر 2.5x
+                    applyZoom();
+                }
+
+                function resetZoom() {
+                    currentZoom = 1;
+                    applyZoom();
+                }
+
+                function applyZoom() {
+                    const canvas = document.getElementById('priceChart');
+                    const container = document.querySelector('.chart-container');
+
+                    if (canvas && container) {
+                        // استفاده از transform برای zoom
+                        canvas.style.transform = `scale(${currentZoom})`;
+                        canvas.style.transformOrigin = 'center top';
+
+                        // تنظیم container برای نمایش zoom شده
+                        container.style.overflow = currentZoom > 1 ? 'auto' : 'visible';
+                    }
+
+                    const zoomLevel = document.getElementById('zoomLevel');
+                    if (zoomLevel) {
+                        zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+                    }
+                }
+
+                // Close dropdowns when clicking outside
+                document.addEventListener('click', (e) => {
+                    const chartTypeDropdown = document.getElementById('chartTypeDropdown');
+                    const timeframeDropdown = document.getElementById('timeframeDropdown');
+                    const chartTypeToggle = document.getElementById('chartTypeToggle');
+                    const timeframeToggle = document.getElementById('timeframeToggle');
+
+                    if (chartTypeDropdown && !chartTypeDropdown.parentElement.contains(e.target) &&
+                        !chartTypeToggle.contains(e.target)) {
+                        closeChartTypeDropdown();
+                    }
+
+                    if (timeframeDropdown && !timeframeDropdown.parentElement.contains(e.target) &&
+                        !timeframeToggle.contains(e.target)) {
+                        closeTimeframeDropdown();
+                    }
+                });
+
+                function setupChartTypeButtons() {
+                    // لا توجد حاجة - استخدام dropdown بدلاً من ذلك
+                }
+
+                // Handle Timeframe Button Clicks
+                function setupTimeframeButtons() {
+                    // لا توجد حاجة - استخدام dropdown بدلاً من ذلك
+                }
+
+                // Clear Search Input
+                function clearSearch() {
+                    const searchInput = document.getElementById('searchInput');
+                    const clearBtn = document.getElementById('searchClear');
+                    searchInput.value = '';
+                    clearBtn.classList.remove('visible');
+                    filterAndRender();
+                    searchInput.focus();
+                }
+
+                // Event Listeners
+                document.getElementById('searchInput').addEventListener('input', (e) => {
+                    const clearBtn = document.getElementById('searchClear');
+                    if (e.target.value.length > 0) {
+                        clearBtn.classList.add('visible');
+                    } else {
+                        clearBtn.classList.remove('visible');
+                    }
+                    filterAndRender();
+                });
+
+                // Close Modal on Outside Click
+                document.getElementById('chartModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'chartModal') {
+                        closeChartModal();
+                    }
+                });
+
+                // Close Modal on Escape Key
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && document.getElementById('chartModal').classList.contains('active')) {
+                        closeChartModal();
+                    }
+                });
+
+                // Initial Load
+                fetchData();
+                updateNavDateTime();
+                loadDarkModePreference();
+                setInterval(updateNavDateTime, 60000);
+
+                // Set initial theme indicator for nav tabs
+                document.querySelectorAll('.nav-tab').forEach((tab, index) => {
+                    if (index === 0) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Update indicator on initial load (with skipTransition) and window resize
+                setTimeout(() => updateIndicator(true), 0);
+                window.addEventListener('resize', () => updateIndicator(false));
+
+                // غیرفعال کردن تمام تعاملات روی عکس‌ها
+                document.addEventListener('contextmenu', (e) => {
+                    if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }, true);
+
+                document.addEventListener('mousedown', (e) => {
+                    if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }, true);
+
+                document.addEventListener('dragstart', (e) => {
+                    if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }, true);
+
+                document.addEventListener('dragover', (e) => {
+                    if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }, true);
+
+                // Pull to Refresh for Mobile - بهبود‌شده
+                let pullStartY = 0;
+                let isPulling = false;
+                let isLoading = false;
+                const pullThreshold = 80;
+                let pullDistance = 0;
+
+                function showPullToRefreshIndicator() {
+                    const container = document.getElementById('pullToRefreshContainer');
+                    const indicator = document.getElementById('pullToRefreshIndicator');
+                    if (container && indicator && !isLoading) {
+                        container.classList.add('refreshing');
+                        indicator.classList.add('active');
+                    }
+                }
+
+                function hidePullToRefreshIndicator() {
+                    const container = document.getElementById('pullToRefreshContainer');
+                    const indicator = document.getElementById('pullToRefreshIndicator');
+                    if (container && indicator) {
+                        indicator.classList.remove('active');
+                        setTimeout(() => {
+                            container.classList.remove('refreshing');
+                        }, 300);
+                    }
+                }
+
+                function hideSearchAndCardsForRefresh() {
+                    // اضافه کردن refreshing class به body برای اسلاید پایین کارت‌ها
+                    document.body.classList.add('refreshing');
+                }
+
+                function showSearchAndCardsAfterRefresh() {
+                    // حذف refreshing class برای بالا آمدن کارت‌ها
+                    document.body.classList.remove('refreshing');
+                }
+
+                document.addEventListener('touchstart', (e) => {
+                    if (window.pageYOffset === 0) {
+                        pullStartY = e.touches[0].clientY;
+                        isPulling = true;
+                        pullDistance = 0;
+                    }
+                }, { passive: true });
+
+                document.addEventListener('touchmove', (e) => {
+                    if (isPulling && window.pageYOffset === 0 && !isLoading) {
+                        pullDistance = e.touches[0].clientY - pullStartY;
+
+                        if (pullDistance > 0) {
+                            // نمایش indicator هنگام کشیدن
+                            if (pullDistance > pullThreshold / 2) {
+                                showPullToRefreshIndicator();
                             }
+                        }
+                    }
+                }, { passive: true });
 
-                            // ===== Zoom Functions =====
-                            let currentZoom = 1;
+                document.addEventListener('touchend', (e) => {
+                    if (isPulling && !isLoading) {
+                        if (pullDistance > pullThreshold) {
+                            // شروع لودینگ
+                            isLoading = true;
+                            hideSearchAndCardsForRefresh();
+                            showPullToRefreshIndicator();
 
-                            function zoomChart(factor) {
-                                currentZoom *= factor;
-                                currentZoom = Math.max(0.5, Math.min(2.5, currentZoom)); // حداقل 0.5x و حداکثر 2.5x
-                                applyZoom();
-                            }
-
-                            function resetZoom() {
-                                currentZoom = 1;
-                                applyZoom();
-                            }
-
-                            function applyZoom() {
-                                const canvas = document.getElementById('priceChart');
-                                if (canvas) {
-                                    canvas.style.transform = `scale(${currentZoom})`;
-                                    canvas.style.transformOrigin = 'center top';
-                                }
-
-                                const zoomLevel = document.getElementById('zoomLevel');
-                                zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
-                            }
-
-                            // Close dropdowns when clicking outside
-                            document.addEventListener('click', (e) => {
-                                const chartTypeDropdown = document.getElementById('chartTypeDropdown');
-                                const timeframeDropdown = document.getElementById('timeframeDropdown');
-                                const chartTypeToggle = document.getElementById('chartTypeToggle');
-                                const timeframeToggle = document.getElementById('timeframeToggle');
-
-                                if (chartTypeDropdown && !chartTypeDropdown.parentElement.contains(e.target) &&
-                                    !chartTypeToggle.contains(e.target)) {
-                                    closeChartTypeDropdown();
-                                }
-
-                                if (timeframeDropdown && !timeframeDropdown.parentElement.contains(e.target) &&
-                                    !timeframeToggle.contains(e.target)) {
-                                    closeTimeframeDropdown();
-                                }
-                            });
-
-                            function setupChartTypeButtons() {
-                                // لا توجد حاجة - استخدام dropdown بدلاً من ذلك
-                            }
-
-                            // Handle Timeframe Button Clicks
-                            function setupTimeframeButtons() {
-                                // لا توجد حاجة - استخدام dropdown بدلاً من ذلك
-                            }
-
-                            // Clear Search Input
-                            function clearSearch() {
-                                const searchInput = document.getElementById('searchInput');
-                                const clearBtn = document.getElementById('searchClear');
-                                searchInput.value = '';
-                                clearBtn.classList.remove('visible');
-                                filterAndRender();
-                                searchInput.focus();
-                            }
-
-                            // Event Listeners
-                            document.getElementById('searchInput').addEventListener('input', (e) => {
-                                const clearBtn = document.getElementById('searchClear');
-                                if (e.target.value.length > 0) {
-                                    clearBtn.classList.add('visible');
-                                } else {
-                                    clearBtn.classList.remove('visible');
-                                }
-                                filterAndRender();
-                            });
-
-                            // Close Modal on Outside Click
-                            document.getElementById('chartModal').addEventListener('click', (e) => {
-                                if (e.target.id === 'chartModal') {
-                                    closeChartModal();
-                                }
-                            });
-
-                            // Close Modal on Escape Key
-                            document.addEventListener('keydown', (e) => {
-                                if (e.key === 'Escape' && document.getElementById('chartModal').classList.contains('active')) {
-                                    closeChartModal();
-                                }
-                            });
-
-                            // Initial Load
-                            fetchData();
-                            updateNavDateTime();
-                            loadDarkModePreference();
-                            setInterval(updateNavDateTime, 60000);
-
-                            // Set initial theme indicator for nav tabs
-                            document.querySelectorAll('.nav-tab').forEach((tab, index) => {
-                                if (index === 0) {
-                                    tab.classList.add('active');
-                                } else {
-                                    tab.classList.remove('active');
-                                }
-                            });
-
-                            // Update indicator on initial load (with skipTransition) and window resize
-                            setTimeout(() => updateIndicator(true), 0);
-                            window.addEventListener('resize', () => updateIndicator(false));
-
-                            // غیرفعال کردن تمام تعاملات روی عکس‌ها
-                            document.addEventListener('contextmenu', (e) => {
-                                if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
-                                    e.preventDefault();
-                                    return false;
-                                }
-                            }, true);
-
-                            document.addEventListener('mousedown', (e) => {
-                                if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
-                                    e.preventDefault();
-                                    return false;
-                                }
-                            }, true);
-
-                            document.addEventListener('dragstart', (e) => {
-                                if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
-                                    e.preventDefault();
-                                    return false;
-                                }
-                            }, true);
-
-                            document.addEventListener('dragover', (e) => {
-                                if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
-                                    e.preventDefault();
-                                    return false;
-                                }
-                            }, true);
-
-                            // Pull to Refresh for Mobile - بهبود‌شده
-                            let pullStartY = 0;
-                            let isPulling = false;
-                            let isLoading = false;
-                            const pullThreshold = 80;
-                            let pullDistance = 0;
-
-                            function showPullToRefreshIndicator() {
-                                const container = document.getElementById('pullToRefreshContainer');
-                                const indicator = document.getElementById('pullToRefreshIndicator');
-                                if (container && indicator && !isLoading) {
-                                    container.classList.add('refreshing');
-                                    indicator.classList.add('active');
-                                }
-                            }
-
-                            function hidePullToRefreshIndicator() {
-                                const container = document.getElementById('pullToRefreshContainer');
-                                const indicator = document.getElementById('pullToRefreshIndicator');
-                                if (container && indicator) {
-                                    indicator.classList.remove('active');
+                            // فراخوانی fetch و سپس پنهان کردن
+                            fetchData().then(() => {
+                                // منتظر کمی برای انیمیشن
+                                setTimeout(() => {
+                                    showSearchAndCardsAfterRefresh();
                                     setTimeout(() => {
-                                        container.classList.remove('refreshing');
-                                    }, 300);
-                                }
-                            }
-
-                            function hideSearchAndCardsForRefresh() {
-                                const searchContainer = document.querySelector('.search-container');
-                                const priceGrid = document.getElementById('priceGrid');
-                                if (searchContainer) searchContainer.classList.add('hidden');
-                                if (priceGrid) priceGrid.style.opacity = '0';
-                            }
-
-                            function showSearchAndCardsAfterRefresh() {
-                                const searchContainer = document.querySelector('.search-container');
-                                const priceGrid = document.getElementById('priceGrid');
-                                if (searchContainer) searchContainer.classList.remove('hidden');
-                                if (priceGrid) {
-                                    priceGrid.style.opacity = '1';
-                                    priceGrid.style.transition = 'opacity 0.5s ease';
-                                    setTimeout(() => {
-                                        if (priceGrid) priceGrid.style.transition = 'none';
-                                    }, 500);
-                                }
-                            }
-
-                            document.addEventListener('touchstart', (e) => {
-                                if (window.pageYOffset === 0) {
-                                    pullStartY = e.touches[0].clientY;
-                                    isPulling = true;
-                                    pullDistance = 0;
-                                }
-                            }, { passive: true });
-
-                            document.addEventListener('touchmove', (e) => {
-                                if (isPulling && window.pageYOffset === 0 && !isLoading) {
-                                    pullDistance = e.touches[0].clientY - pullStartY;
-
-                                    if (pullDistance > 0) {
-                                        // نمایش indicator هنگام کشیدن
-                                        if (pullDistance > pullThreshold / 2) {
-                                            showPullToRefreshIndicator();
-                                        }
-                                    }
-                                }
-                            }, { passive: true });
-
-                            document.addEventListener('touchend', (e) => {
-                                if (isPulling && !isLoading) {
-                                    if (pullDistance > pullThreshold) {
-                                        // شروع لودینگ
-                                        isLoading = true;
-                                        hideSearchAndCardsForRefresh();
-                                        showPullToRefreshIndicator();
-
-                                        // فراخوانی fetch و سپس پنهان کردن
-                                        fetchData().then(() => {
-                                            // منتظر کمی برای انیمیشن
-                                            setTimeout(() => {
-                                                showSearchAndCardsAfterRefresh();
-                                                setTimeout(() => {
-                                                    hidePullToRefreshIndicator();
-                                                    isLoading = false;
-                                                }, 500);
-                                            }, 200);
-                                        }).catch(() => {
-                                            setTimeout(() => {
-                                                showSearchAndCardsAfterRefresh();
-                                                setTimeout(() => {
-                                                    hidePullToRefreshIndicator();
-                                                    isLoading = false;
-                                                }, 500);
-                                            }, 200);
-                                        });
-                                    } else {
-                                        // اگر کافی کشیده نشود، پنهان کنید
                                         hidePullToRefreshIndicator();
-                                    }
-                                }
-                                isPulling = false;
-                                pullDistance = 0;
-                            }, { passive: true });
+                                        isLoading = false;
+                                    }, 500);
+                                }, 200);
+                            }).catch(() => {
+                                setTimeout(() => {
+                                    showSearchAndCardsAfterRefresh();
+                                    setTimeout(() => {
+                                        hidePullToRefreshIndicator();
+                                        isLoading = false;
+                                    }, 500);
+                                }, 200);
+                            });
+                        } else {
+                            // اگر کافی کشیده نشود، پنهان کنید
+                            hidePullToRefreshIndicator();
+                        }
+                    }
+                    isPulling = false;
+                    pullDistance = 0;
+                }, { passive: true });
 
-                            // Auto Refresh Every Minute
-                            setInterval(fetchData, 60000);
+                // Auto Refresh Every Minute
+                setInterval(fetchData, 60000);
 
-                            // Initialize chart controls when modal is shown
-                            const chartModal = document.getElementById('chartModal');
-                            const originalShowChart = window.openChartModal;
+                // Handle window resize for chart responsiveness
+                let resizeTimer;
+                window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(() => {
+                        // اگر نمودار باز باشد، آن را re-render کنیم
+                        if (document.getElementById('chartModal').classList.contains('active') &&
+                            chartState.historicalData.length > 0) {
+                            renderChart(chartState.historicalData, chartState.currentSymbol, chartState.currentName);
+                        }
+                    }, 250);
+                });
 
-                            // Ensure chart controls are set up on first use
-                            setTimeout(() => {
-                                setupChartTypeButtons();
-                                setupTimeframeButtons();
-                            }, 100);
-                        </script>
+                // Initialize chart controls when modal is shown
+                const chartModal = document.getElementById('chartModal');
+                const originalShowChart = window.openChartModal;
+
+                // Ensure chart controls are set up on first use
+                setTimeout(() => {
+                    setupChartTypeButtons();
+                    setupTimeframeButtons();
+                }, 100);
+            </script>
 </body>
 
 </html>
