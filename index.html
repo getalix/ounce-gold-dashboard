@@ -493,6 +493,30 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* Ensure all icons are uniform size and scaled consistently */
+        .icon-container {
+            width: 50px;
+            height: 50px;
+            min-width: 50px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-radius: 10px;
+            background: transparent;
+        }
+
+        .card-icon img,
+        .icon-container img,
+        .card-icon-img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
+            display: block !important;
+            border-radius: 10px !important;
+        }
+
         .card-title {
             flex: 1;
         }
@@ -3191,23 +3215,19 @@
                 setTimeout(() => updateIndicator(true), 0);
                 window.addEventListener('resize', () => updateIndicator(false));
 
-                // غیرفعال کردن تمام تعاملات روی عکس‌ها
-                // Context menu و Mouse down handler - غیرفعال شده برای اجازه inspect
-                /*
+                // غیرفعال کردن منوی راست‌کلیک در کل صفحه
                 document.addEventListener('contextmenu', (e) => {
-                    if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
-                        e.preventDefault();
-                        return false;
-                    }
+                    e.preventDefault();
+                    return false;
                 }, true);
 
+                // جلوگیری از رویداد mousedown روی تصاویر داخل کارت‌ها
                 document.addEventListener('mousedown', (e) => {
                     if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
                         e.preventDefault();
                         return false;
                     }
                 }, true);
-                */
 
                 document.addEventListener('dragstart', (e) => {
                     if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
@@ -3218,6 +3238,33 @@
 
                 document.addEventListener('dragover', (e) => {
                     if (e.target.tagName === 'IMG' && e.target.closest('.card-icon')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }, true);
+
+                // Block common developer tools keyboard shortcuts globally
+                document.addEventListener('keydown', function (e) {
+                    // F12
+                    if (e.key === 'F12') {
+                        e.preventDefault();
+                        return false;
+                    }
+
+                    // Ctrl/Cmd + Shift + I / J / C
+                    if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) {
+                        e.preventDefault();
+                        return false;
+                    }
+
+                    // Ctrl/Cmd + U (view-source)
+                    if ((e.ctrlKey || e.metaKey) && ['U', 'u'].includes(e.key)) {
+                        e.preventDefault();
+                        return false;
+                    }
+
+                    // Ctrl/Cmd + Shift + K (Firefox console) and Ctrl+Shift+S
+                    if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['K', 'k', 'S', 's'].includes(e.key)) {
                         e.preventDefault();
                         return false;
                     }
