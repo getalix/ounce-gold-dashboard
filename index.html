@@ -1695,8 +1695,9 @@
                      data-urls='${JSON.stringify(iconUrls)}'
                      style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none; display: block;"
                      draggable="false"
-                     crossorigin="anonymous"
-                     loading="lazy">
+                     referrerpolicy="no-referrer"
+                     decoding="async"
+                     >
             </div>`;
                 }
 
@@ -1796,8 +1797,8 @@
                             tryNextSize(this, iconPath, wrapper, symbol, 0);
                         });
 
-                        // Timeout برای مواقع آفلاین یا بسیار کند
-                        const timeoutDelay = isTelegramMiniApp() ? 8000 : 5000;
+                        // Timeout برای مواقع آفلاین یا بسیار کند (در Mini App افزایش یافته)
+                        const timeoutDelay = isTelegramMiniApp() ? 12000 : 5000;
                         setTimeout(() => {
                             if (!img.__handlersSetup || img.__timeoutChecked) return;
                             img.__timeoutChecked = true;
@@ -1827,7 +1828,12 @@
 
                     const nextSize = sizes[attemptCount];
                     // طبق فرمت API: {url_base_icon}/{size}/{path_icon}
-                    const newSrc = `${baseUrl}/${nextSize}/${iconPath}`;
+                    const isInMini = isTelegramMiniApp();
+                    let newSrc = `${baseUrl}/${nextSize}/${iconPath}`;
+                    // در Mini App ممکن است cache یا محدودیت وجود داشته باشد؛ یک query string برای شکست cache اضافه کن
+                    if (isInMini) {
+                        newSrc += `?t=${Date.now()}`;
+                    }
                     console.log(`📥 درخواست: ${newSrc}`);
 
                     const newImg = document.createElement('img');
@@ -1839,9 +1845,11 @@
                     newImg.setAttribute('data-base-url', baseUrl);
                     newImg.style.cssText = img.style.cssText;
                     newImg.draggable = false;
-                    newImg.crossOrigin = 'anonymous';
+                    // Avoid forcing crossorigin to improve compatibility inside Mini App WebView
+                    try { newImg.referrerPolicy = 'no-referrer'; } catch (e) { }
+                    try { newImg.loading = 'eager'; } catch (e) { }
 
-                    const timeoutDelay = isTelegramMiniApp() ? 5000 : 3000;
+                    const timeoutDelay = isTelegramMiniApp() ? 8000 : 3000;
                     const loadTimeout = setTimeout(() => {
                         // اگر بعد از تعیین شده لود نشد، سراغ سایز بعدی
                         if (!newImg.complete) {
