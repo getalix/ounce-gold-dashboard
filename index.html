@@ -1669,7 +1669,7 @@
                 }
 
                 // Load Icon with Retry Logic - بهتر شده
-                function loadIconWithFallback(iconPath, symbol, urlBaseIcon = 'https://brsapi.ir/Api/Market/GCC/Icon') {
+                function loadIconWithFallback(iconPath, symbol, urlBaseIcon = 'https://ons-gold-tg.panytb.workers.dev/Api/Market/GCC/Icon') {
                     if (!iconPath) {
                         return createSymbolFallback(symbol);
                     }
@@ -1678,22 +1678,12 @@
 
                     // آدرس‌های متعدد برای تلاش مجدد - طبق فرمت API: {url_base_icon}/{size}/{path_icon}
                     const sizes = ['256x256', '128x128', '64x64', '32x32'];
+                    const iconUrls = sizes.map(size => `${urlBaseIcon}/${size}/${iconPath}`);
+
+                    // استفاده اولی: 128x128 برای موبایل و 256x256 برای دسکتاپ
                     const isMobile = window.innerWidth <= 768;
                     const initialSize = isMobile ? '128x128' : '256x256';
-
-                    // Use image proxy for Mini App, direct URL for browser
-                    const isInMiniApp = isTelegramMiniApp();
-                    const baseImageUrl = `${urlBaseIcon}/${initialSize}/${iconPath}`;
-
-                    let corsProxyUrl;
-                    if (isInMiniApp) {
-                        // Use the image proxy endpoint from Cloudflare Worker
-                        const workerUrl = 'https://ons-gold-tg.panytb.workers.dev';
-                        corsProxyUrl = `${workerUrl}/api/image-proxy?url=${encodeURIComponent(baseImageUrl)}`;
-                    } else {
-                        // Direct URL for browser
-                        corsProxyUrl = baseImageUrl;
-                    }
+                    const corsProxyUrl = `${urlBaseIcon}/${initialSize}/${iconPath}`;
 
                     return `<div id="${uniqueId}" class="icon-container" data-symbol="${symbol}" data-path="${iconPath}" style="width: 50px; height: 50px; border-radius: 10px; overflow: hidden; display: flex; align-items: center; justify-content: center; background: transparent;">
                 <img src="${corsProxyUrl}" 
@@ -1702,7 +1692,7 @@
                      data-symbol="${symbol}"
                      data-icon-path="${iconPath}"
                      data-base-url="${urlBaseIcon}"
-                     data-is-mini-app="${isInMiniApp}"
+                     data-urls='${JSON.stringify(iconUrls)}'
                      style="width: 50px; height: 50px; border-radius: 10px; object-fit: contain; user-select: none; pointer-events: none; -webkit-user-drag: none; display: block;"
                      draggable="false"
                      crossorigin="anonymous"
@@ -1824,8 +1814,7 @@
                 function tryNextSize(img, iconPath, wrapper, symbol, attemptCount = 0) {
                     const sizes = ['256x256', '128x128', '64x64', '32x32'];
                     const maxAttempts = sizes.length;
-                    const baseUrl = img.getAttribute('data-base-url') || 'https://brsapi.ir/Api/Market/GCC/Icon';
-                    const isInMiniApp = img.getAttribute('data-is-mini-app') === 'true' || isTelegramMiniApp();
+                    const baseUrl = img.getAttribute('data-base-url') || 'https://ons-gold-tg.panytb.workers.dev/Api/Market/GCC/Icon';
 
                     console.log(`🔄 تلاش ${attemptCount + 1}/${maxAttempts} برای بارگذاری آیکون ${symbol} (سایز: ${sizes[attemptCount]})`);
 
@@ -1838,16 +1827,7 @@
 
                     const nextSize = sizes[attemptCount];
                     // طبق فرمت API: {url_base_icon}/{size}/{path_icon}
-                    const directImageUrl = `${baseUrl}/${nextSize}/${iconPath}`;
-
-                    // Use image proxy for Mini App, direct URL for browser
-                    let newSrc;
-                    if (isInMiniApp) {
-                        const workerUrl = 'https://ons-gold-tg.panytb.workers.dev';
-                        newSrc = `${workerUrl}/api/image-proxy?url=${encodeURIComponent(directImageUrl)}`;
-                    } else {
-                        newSrc = directImageUrl;
-                    }
+                    const newSrc = `${baseUrl}/${nextSize}/${iconPath}`;
                     console.log(`📥 درخواست: ${newSrc}`);
 
                     const newImg = document.createElement('img');
@@ -1857,7 +1837,6 @@
                     newImg.setAttribute('data-symbol', symbol);
                     newImg.setAttribute('data-icon-path', iconPath);
                     newImg.setAttribute('data-base-url', baseUrl);
-                    newImg.setAttribute('data-is-mini-app', isInMiniApp.toString());
                     newImg.style.cssText = img.style.cssText;
                     newImg.draggable = false;
                     newImg.crossOrigin = 'anonymous';
@@ -2154,7 +2133,7 @@
                     // ساخت آدرس آیکن از API (از path_icon و url_base_icon در پاسخ API)
                     let iconElement = '';
                     if (item.path_icon) {
-                        const baseUrl = item.url_base_icon || 'https://brsapi.ir/Api/Market/GCC/Icon';
+                        const baseUrl = 'https://ons-gold-tg.panytb.workers.dev/Api/Market/GCC/Icon'; // استفاده از proxy Cloudflare
                         iconElement = loadIconWithFallback(item.path_icon, item.symbol, baseUrl);
                     } else if (item.symbol) {
                         // Fallback: نمایش symbol به صورت متنی اگر icon موجود نباشد
