@@ -381,19 +381,20 @@
         /* ===== Price Ticker/Marquee ===== */
         .price-ticker {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 8px 0;
-            margin: 12px 0;
-            border-radius: 12px;
+            padding: 4px 0;
+            margin: 10px 0;
+            border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
 
         .ticker-content {
             display: flex;
-            gap: 30px;
-            padding: 0 15px;
-            animation: scroll-left 15s linear infinite;
+            gap: 12px;
+            padding: 0 0;
+            animation: scroll-left 20s linear infinite;
             white-space: nowrap;
+            will-change: transform;
         }
 
         .ticker-content:hover {
@@ -406,53 +407,47 @@
             }
 
             100% {
-                transform: translateX(-50%);
+                transform: translateX(-100%);
             }
         }
 
         .ticker-item {
             display: inline-flex;
-            flex-direction: column;
             align-items: center;
-            gap: 2px;
-            color: white;
+            gap: 10px;
+            color: #fff;
             font-weight: 600;
             font-size: 12px;
             min-width: max-content;
-            padding: 5px 10px;
-            background: rgba(30, 30, 50, 0.7);
+            padding: 5px 12px;
+            background: rgba(30, 30, 60, 0.85);
             border-radius: 6px;
-            backdrop-filter: blur(10px);
-        }
-
-        .ticker-header {
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            box-shadow: 0 2px 8px rgba(30, 30, 60, 0.15);
+            backdrop-filter: blur(4px);
+            flex-shrink: 0;
         }
 
         .ticker-symbol {
             font-weight: 700;
-            opacity: 0.9;
-        }
-
-        .ticker-subtitle {
-            font-size: 9px;
-            opacity: 0.75;
-            font-weight: 500;
+            opacity: 1;
+            color: #fff;
+            font-size: 11px;
+            color: #bdbdbd;
+            font-weight: 400;
+            margin-top: 1px;
         }
 
         .ticker-price {
             color: #fff;
-            font-weight: 600;
-            font-size: 11px;
+            font-weight: 700;
+            font-size: 13px;
         }
 
         .ticker-change {
-            font-size: 10px;
+            font-size: 11px;
             padding: 2px 5px;
-            border-radius: 3px;
-            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.12);
         }
 
         .ticker-change.positive {
@@ -2159,6 +2154,7 @@
                             // Process Crypto Data
                             if (data.cryptocurrency) {
                                 allData.cryptocurrency = data.cryptocurrency.map(item => ({ ...item, type: 'crypto', url_base_icon: urlBaseIcon }));
+                                console.log('🔐 Crypto data loaded:', allData.cryptocurrency.map(c => ({ symbol: c.symbol, price_toman: c.price_toman })));
                             }
 
                             // Update Filter and Render
@@ -2268,16 +2264,22 @@
                     const tickerContent = document.getElementById('tickerContent');
                     if (!tickerContent) return;
 
-                    // Target items with Persian labels
-                    const tickerSymbols = {
+                    // Target items to display in ticker
+                    const tickerSymbols = [
+                        'XAUUSD', 'IR_GOLD_18K', 'IR_GOLD_24K',
+                        'IR_COIN_EMAMI', 'IR_COIN_BAHAR',
+                        'USD', 'EUR', 'BTC', 'USDT'
+                    ];
+                    // Persian subtitles for each symbol
+                    const tickerSubtitles = {
                         'XAUUSD': 'انس طلا',
-                        'IR_GOLD_18K': 'طلا 18',
-                        'IR_GOLD_24K': 'طلا 24',
+                        'IR_GOLD_18K': 'طلا ۱۸ عیار',
+                        'IR_GOLD_24K': 'طلا ۲۴ عیار',
                         'IR_COIN_EMAMI': 'سکه امامی',
-                        'IR_COIN_BAHAR': 'بهار آزادی',
+                        'IR_COIN_BAHAR': 'سکه بهار آزادی',
                         'USD': 'دلار آمریکا',
                         'EUR': 'یورو',
-                        'BTC': 'بیت کوین',
+                        'BTC': 'بیت‌کوین',
                         'USDT': 'تتر'
                     };
 
@@ -2285,69 +2287,87 @@
 
                     // Search through allData to find target items
                     if (allData && typeof allData === 'object') {
-                        // Search in all possible arrays
+                        // gold, currency, cryptocurrency are flat arrays
                         const searchArrays = [
-                            ...(allData.gold?.ounce || []),
-                            ...(allData.gold?.type || []),
-                            ...(allData.gold?.coin || []),
-                            ...(allData.gold?.coin_parsian || []),
-                            ...(allData.currency?.free || []),
+                            ...(allData.gold || []),
+                            ...(allData.currency || []),
                             ...(allData.cryptocurrency || [])
                         ];
 
+                        console.log('🔍 All available items:', searchArrays.map(i => i.symbol));
+                        console.log('📍 Looking for:', tickerSymbols);
+
                         // Filter for target items
                         searchArrays.forEach(item => {
-                            if (item && item.symbol && tickerSymbols[item.symbol]) {
+                            if (item && item.symbol && tickerSymbols.includes(item.symbol)) {
                                 // Avoid duplicates
                                 if (!tickerItems.find(t => t.symbol === item.symbol)) {
                                     tickerItems.push(item);
+                                    console.log(`✅ Found: ${item.symbol}`);
                                 }
                             }
                         });
                     }
 
                     // Sort ticker items in the order specified
-                    const symbolOrder = Object.keys(tickerSymbols);
                     const sortedItems = [];
-                    symbolOrder.forEach(symbol => {
+                    tickerSymbols.forEach(symbol => {
                         const item = tickerItems.find(t => t.symbol === symbol);
-                        if (item) sortedItems.push(item);
+                        if (item) {
+                            sortedItems.push(item);
+                        } else {
+                            console.warn(`⚠️ Not found: ${symbol}`);
+                        }
                     });
                     tickerItems = sortedItems;
 
                     // Build ticker HTML
                     let tickerHTML = '';
+                    console.log('🎯 updatePriceTicker - Found items:', tickerItems.map(i => i.symbol));
                     tickerItems.forEach(item => {
                         const change = parseFloat(item.change_percent) || 0;
                         const changeEmoji = change > 0 ? '📈' : change < 0 ? '📉' : '➡️';
                         const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
 
-                        // Format price with separators
-                        const price = parseFloat(item.price) || 0;
-                        const formattedPrice = price.toLocaleString('fa-IR', {
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 2
-                        });
+                        // Persian subtitle
+                        const subtitle = tickerSubtitles[item.symbol] || '';
 
-                        // Get Persian subtitle
-                        const subtitle = tickerSymbols[item.symbol] || item.name || item.symbol;
+                        let priceDisplay = '';
+                        // نمادین برای BTC و USDT
+                        let icon = '';
+                        if (item.symbol === 'BTC') {
+                            icon = '<span style="font-size:18px;margin-left:4px;">₿</span>';
+                        } else if (item.symbol === 'USDT') {
+                            icon = '<span style="font-size:18px;margin-left:4px;">💵</span>';
+                        }
+
+                        // نمایش قیمت ریالی برای رمزارزها (BTC, USDT, etc.)
+                        if ((item.type === 'crypto' || item.symbol === 'BTC' || item.symbol === 'USDT') && item.price_toman) {
+                            // نمایش قیمت ریالی برای رمزارزها
+                            const rialPrice = parseFloat(item.price_toman) || 0;
+                            priceDisplay = `<span class="ticker-price">${toPersianDigits(rialPrice.toLocaleString('fa-IR'))}</span><span class="unit">ریال</span>`;
+                            console.log(`💰 ${item.symbol}: price_toman = ${item.price_toman}`);
+                        } else {
+                            // سایر نمادها مثل مینی اپ
+                            const price = parseFloat(item.price) || 0;
+                            priceDisplay = `<span class="ticker-price">${toPersianDigits(price.toLocaleString('fa-IR'))}</span><span class="unit">${item.unit || ''}</span>`;
+                        }
 
                         tickerHTML += `
                             <div class="ticker-item">
-                                <div class="ticker-header">
-                                    <span class="ticker-symbol">${item.symbol}</span>
+                                <div style="display:flex;flex-direction:column;align-items:flex-start;">
+                                    <span class="ticker-symbol" title="${item.name || item.symbol}">${icon}${item.symbol}</span>
+                                    <span class="ticker-subtitle" style="font-size:12px;opacity:0.8;">${subtitle}</span>
                                 </div>
-                                <span class="ticker-subtitle">${subtitle}</span>
-                                <span class="ticker-price">${formattedPrice} تومان</span>
-                                <span class="ticker-change ${changeClass}">${changeEmoji} ${Math.abs(change).toFixed(2)}%</span>
+                                ${priceDisplay}
+                                <span class="ticker-change ${changeClass}">${changeEmoji} ${toPersianDigits(Math.abs(change).toFixed(2))}%</span>
                             </div>
                         `;
                     });
 
-                    // Triple duplicate content for seamless infinite scroll effect
-                    tickerHTML = tickerHTML + tickerHTML + tickerHTML;
-
-                    tickerContent.innerHTML = tickerHTML;
+                    // Seamless loop: duplicate content 3 times for true seamless infinite scroll
+                    // Animation goes 0% to -100%, so content repeats 3x without jumping
+                    tickerContent.innerHTML = tickerHTML + tickerHTML + tickerHTML;
                 }
 
                 // Create Price Card Element
