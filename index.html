@@ -392,7 +392,7 @@
             display: flex;
             gap: 12px;
             padding: 0 0;
-            animation: scroll-left 25s linear infinite;
+            animation: scroll-left 30s linear infinite;
             white-space: nowrap;
             will-change: transform;
         }
@@ -403,7 +403,7 @@
 
         @keyframes scroll-left {
             0% {
-                transform: translateX(0);
+                transform: translateX(100%);
             }
 
             100% {
@@ -2347,10 +2347,13 @@
                             const rialPrice = parseFloat(item.price_toman) || 0;
                             priceDisplay = `<span class="ticker-price">${rialPrice.toLocaleString('en-US')}</span><span class="unit">ریال</span>`;
                             console.log(`💰 ${item.symbol}: price_toman = ${item.price_toman}`);
-                        } else {
+                        } else if (item.price) {
                             // سایر نمادها مثل مینی اپ - اعداد انگلیسی
                             const price = parseFloat(item.price) || 0;
                             priceDisplay = `<span class="ticker-price">${price.toLocaleString('en-US')}</span><span class="unit">${item.unit || ''}</span>`;
+                            console.log(`💵 ${item.symbol}: price = ${item.price}, unit = ${item.unit}`);
+                        } else {
+                            console.warn(`⚠️ ${item.symbol}: NO PRICE FOUND! item:`, item);
                         }
 
                         tickerHTML += `
