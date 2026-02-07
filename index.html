@@ -2367,7 +2367,10 @@
 
                     // Seamless loop: duplicate content 3 times for true seamless infinite scroll
                     // Animation goes 0% to -100%, so content repeats 3x without jumping
+                    console.log('📊 tickerHTML length:', tickerHTML.length);
+                    console.log('📝 Ticker items count:', tickerItems.length);
                     tickerContent.innerHTML = tickerHTML + tickerHTML + tickerHTML;
+                    console.log('✅ Ticker content updated. Items in DOM:', tickerContent.querySelectorAll('.ticker-item').length);
                 }
 
                 // Create Price Card Element
