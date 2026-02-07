@@ -909,12 +909,7 @@
             pointer-events: none;
             height: 0;
             overflow: hidden;
-            transition: none;
-        }
-
-        .pull-to-refresh-container.refreshing {
-            height: 120px;
-            transition: height 0.3s ease;
+            display: none;
         }
 
         .pull-to-refresh {
@@ -923,33 +918,28 @@
             left: 0;
             right: 0;
             height: 120px;
-            display: flex;
+            display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             gap: 10px;
-            background: linear-gradient(180deg, rgba(102, 126, 234, 0.1) 0%, rgba(102, 126, 234, 0.05) 100%);
-            border-bottom: 2px solid rgba(102, 126, 234, 0.2);
+            background: transparent;
+            border: none;
             opacity: 0;
-            transition: opacity 0.3s ease;
             pointer-events: none;
         }
 
-        .pull-to-refresh.active {
-            opacity: 1;
-        }
-
-        /* Slide down animation for cards and search during pull-to-refresh */
+        /* No animation for cards during refresh - just instant */
         body.refreshing .search-container,
         body.refreshing #priceGrid {
-            transform: translateY(120px);
-            transition: transform 0.3s ease;
+            transform: translateY(0);
+            transition: none;
         }
 
         body:not(.refreshing) .search-container,
         body:not(.refreshing) #priceGrid {
             transform: translateY(0);
-            transition: transform 0.4s ease;
+            transition: none;
         }
 
         body.light-mode .pull-to-refresh {
@@ -2006,11 +1996,31 @@
                     event.target.classList.add('active');
                     updateIndicator();
                     filterAndRender();
-                    // صفحه را به بالا ببر
-                    window.scrollTo({
-                        top: 0,
-                        behavior: 'smooth'
-                    });
+                    // صفحه را به آرومی به بالا ببر
+                    smoothScrollToTop();
+                }
+
+                // Smooth scroll to top with custom timing
+                function smoothScrollToTop(duration = 800) {
+                    const start = window.pageYOffset || document.documentElement.scrollTop;
+                    const startTime = performance.now();
+
+                    const scroll = (currentTime) => {
+                        const elapsed = currentTime - startTime;
+                        const progress = Math.min(elapsed / duration, 1);
+
+                        // استفاده از easing function برای حرکت طبیعی‌تر
+                        const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+                        const position = start * (1 - easeOutCubic);
+
+                        window.scrollTo(0, position);
+
+                        if (progress < 1) {
+                            requestAnimationFrame(scroll);
+                        }
+                    };
+
+                    requestAnimationFrame(scroll);
                 }
 
                 // Fetch Data from API (via Cloudflare Worker Proxy)
@@ -3278,33 +3288,19 @@
                 let pullDistance = 0;
 
                 function showPullToRefreshIndicator() {
-                    const container = document.getElementById('pullToRefreshContainer');
-                    const indicator = document.getElementById('pullToRefreshIndicator');
-                    if (container && indicator && !isLoading) {
-                        container.classList.add('refreshing');
-                        indicator.classList.add('active');
-                    }
+                    // بدون animation - فقط شروع لود
                 }
 
                 function hidePullToRefreshIndicator() {
-                    const container = document.getElementById('pullToRefreshContainer');
-                    const indicator = document.getElementById('pullToRefreshIndicator');
-                    if (container && indicator) {
-                        indicator.classList.remove('active');
-                        setTimeout(() => {
-                            container.classList.remove('refreshing');
-                        }, 300);
-                    }
+                    // بدون animation - فقط پایان لود
                 }
 
                 function hideSearchAndCardsForRefresh() {
-                    // اضافه کردن refreshing class به body برای اسلاید پایین کارت‌ها
-                    document.body.classList.add('refreshing');
+                    // بدون animation - فقط شروع
                 }
 
                 function showSearchAndCardsAfterRefresh() {
-                    // حذف refreshing class برای بالا آمدن کارت‌ها
-                    document.body.classList.remove('refreshing');
+                    // بدون animation - فقط پایان
                 }
 
                 document.addEventListener('touchstart', (e) => {
