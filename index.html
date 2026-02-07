@@ -392,7 +392,7 @@
             display: flex;
             gap: 12px;
             padding: 0 0;
-            animation: scroll-left 20s linear infinite;
+            animation: scroll-left 25s linear infinite;
             white-space: nowrap;
             will-change: transform;
         }
@@ -2343,14 +2343,14 @@
 
                         // نمایش قیمت ریالی برای رمزارزها (BTC, USDT, etc.)
                         if ((item.type === 'crypto' || item.symbol === 'BTC' || item.symbol === 'USDT') && item.price_toman) {
-                            // نمایش قیمت ریالی برای رمزارزها
+                            // نمایش قیمت ریالی برای رمزارزها - اعداد انگلیسی
                             const rialPrice = parseFloat(item.price_toman) || 0;
-                            priceDisplay = `<span class="ticker-price">${toPersianDigits(rialPrice.toLocaleString('fa-IR'))}</span><span class="unit">ریال</span>`;
+                            priceDisplay = `<span class="ticker-price">${rialPrice.toLocaleString('en-US')}</span><span class="unit">ریال</span>`;
                             console.log(`💰 ${item.symbol}: price_toman = ${item.price_toman}`);
                         } else {
-                            // سایر نمادها مثل مینی اپ
+                            // سایر نمادها مثل مینی اپ - اعداد انگلیسی
                             const price = parseFloat(item.price) || 0;
-                            priceDisplay = `<span class="ticker-price">${toPersianDigits(price.toLocaleString('fa-IR'))}</span><span class="unit">${item.unit || ''}</span>`;
+                            priceDisplay = `<span class="ticker-price">${price.toLocaleString('en-US')}</span><span class="unit">${item.unit || ''}</span>`;
                         }
 
                         tickerHTML += `
@@ -2360,17 +2360,20 @@
                                     <span class="ticker-subtitle" style="font-size:12px;opacity:0.8;">${subtitle}</span>
                                 </div>
                                 ${priceDisplay}
-                                <span class="ticker-change ${changeClass}">${changeEmoji} ${toPersianDigits(Math.abs(change).toFixed(2))}%</span>
+                                <span class="ticker-change ${changeClass}">${changeEmoji} ${Math.abs(change).toFixed(2)}%</span>
                             </div>
                         `;
                     });
 
-                    // Seamless loop: duplicate content 3 times for true seamless infinite scroll
-                    // Animation goes 0% to -100%, so content repeats 3x without jumping
+                    // Seamless loop: duplicate content 2 times for true seamless infinite scroll
+                    // Animation goes 0% to -100%, so content repeats 2x without jumping
                     console.log('📊 tickerHTML length:', tickerHTML.length);
                     console.log('📝 Ticker items count:', tickerItems.length);
-                    tickerContent.innerHTML = tickerHTML + tickerHTML + tickerHTML;
-                    console.log('✅ Ticker content updated. Items in DOM:', tickerContent.querySelectorAll('.ticker-item').length);
+                    const fullHTML = tickerHTML.repeat(2);
+                    tickerContent.innerHTML = fullHTML;
+                    const itemsCount = tickerContent.querySelectorAll('.ticker-item').length;
+                    console.log('✅ Ticker content updated. Items in DOM:', itemsCount);
+                    console.log('Expected items (9 * 2):', 9 * 2, ' Actual:', itemsCount);
                 }
 
                 // Create Price Card Element
