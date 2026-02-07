@@ -378,6 +378,81 @@
             color: #999;
         }
 
+        /* ===== Price Ticker/Marquee ===== */
+        .price-ticker {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 12px 0;
+            margin: 15px 0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .ticker-content {
+            display: flex;
+            gap: 30px;
+            padding: 0 15px;
+            animation: scroll-left 30s linear infinite;
+            white-space: nowrap;
+        }
+
+        .ticker-content:hover {
+            animation-play-state: paused;
+        }
+
+        @keyframes scroll-left {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+
+        .ticker-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            min-width: max-content;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        .ticker-symbol {
+            font-weight: 700;
+            opacity: 0.9;
+        }
+
+        .ticker-price {
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .ticker-change {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .ticker-change.positive {
+            color: #4ade80;
+        }
+
+        .ticker-change.negative {
+            color: #ff6b6b;
+        }
+
+        body.light-mode .price-ticker {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
         body.dark-mode .search-input::placeholder {
             color: #aaa;
         }
@@ -1455,6 +1530,13 @@
             </div>
         </div>
 
+        <!-- Price Ticker/Marquee -->
+        <div class="price-ticker">
+            <div class="ticker-content" id="tickerContent">
+                <!-- تیکر قیمت‌های مهم به صورت روان -->
+            </div>
+        </div>
+
         <!-- Loading State -->
         <div class="loading" id="loadingState">
             <div class="spinner"></div>
@@ -2114,6 +2196,7 @@
                     } else {
                         document.getElementById('emptyState').style.display = 'none';
                         renderPrices(dataToRender);
+                        updatePriceTicker();
                     }
                 }
 
@@ -2164,6 +2247,83 @@
                     setTimeout(() => {
                         setupImageErrorHandlers();
                     }, 500);
+                }
+
+                // Update Price Ticker with Key Items
+                function updatePriceTicker() {
+                    const tickerContent = document.getElementById('tickerContent');
+                    if (!tickerContent) return;
+
+                    // Target items to display in ticker
+                    const tickerSymbols = [
+                        'XAUUSD', 'IR_GOLD_18K', 'IR_GOLD_24K',
+                        'IR_COIN_EMAMI', 'IR_COIN_BAHAR',
+                        'USD', 'EUR', 'BTC', 'USDT'
+                    ];
+
+                    let tickerItems = [];
+
+                    // Search through allData to find target items
+                    if (allData && typeof allData === 'object') {
+                        // Search in all possible arrays
+                        const searchArrays = [
+                            ...(allData.gold?.ounce || []),
+                            ...(allData.gold?.type || []),
+                            ...(allData.gold?.coin || []),
+                            ...(allData.gold?.coin_parsian || []),
+                            ...(allData.currency?.free || []),
+                            ...(allData.cryptocurrency || [])
+                        ];
+
+                        // Filter for target items
+                        searchArrays.forEach(item => {
+                            if (item && item.symbol && tickerSymbols.includes(item.symbol)) {
+                                // Avoid duplicates
+                                if (!tickerItems.find(t => t.symbol === item.symbol)) {
+                                    tickerItems.push(item);
+                                }
+                            }
+                        });
+                    }
+
+                    // Sort ticker items in the order specified
+                    const sortedItems = [];
+                    tickerSymbols.forEach(symbol => {
+                        const item = tickerItems.find(t => t.symbol === symbol);
+                        if (item) sortedItems.push(item);
+                    });
+                    tickerItems = sortedItems;
+
+                    // Build ticker HTML
+                    let tickerHTML = '';
+                    tickerItems.forEach(item => {
+                        const change = parseFloat(item.change_percent) || 0;
+                        const changeEmoji = change > 0 ? '📈' : change < 0 ? '📉' : '➡️';
+                        const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
+
+                        // Format price with separators
+                        const price = parseFloat(item.price) || 0;
+                        const formattedPrice = price.toLocaleString('fa-IR', {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 2
+                        });
+
+                        // Get display name (use Persian name if available, fallback to symbol)
+                        const displayName = item.name || item.symbol;
+
+                        tickerHTML += `
+                            <div class="ticker-item">
+                                <span class="ticker-symbol" title="${displayName}">${item.symbol}</span>
+                                <span class="ticker-price">${formattedPrice}</span>
+                                <span class="ticker-change ${changeClass}">${changeEmoji} ${Math.abs(change).toFixed(2)}%</span>
+                            </div>
+                        `;
+                    });
+
+                    // Duplicate content for seamless infinite scroll effect
+                    tickerHTML += tickerHTML;
+
+                    tickerContent.innerHTML = tickerHTML;
                 }
 
                 // Create Price Card Element
