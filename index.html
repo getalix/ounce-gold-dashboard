@@ -412,8 +412,9 @@
 
         .ticker-item {
             display: inline-flex;
+            flex-direction: column;
             align-items: center;
-            gap: 8px;
+            gap: 2px;
             color: white;
             font-weight: 600;
             font-size: 12px;
@@ -424,21 +425,34 @@
             backdrop-filter: blur(10px);
         }
 
+        .ticker-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         .ticker-symbol {
             font-weight: 700;
             opacity: 0.9;
         }
 
+        .ticker-subtitle {
+            font-size: 9px;
+            opacity: 0.75;
+            font-weight: 500;
+        }
+
         .ticker-price {
             color: #fff;
             font-weight: 600;
+            font-size: 11px;
         }
 
         .ticker-change {
-            font-size: 12px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.2);
+            font-size: 10px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.15);
         }
 
         .ticker-change.positive {
@@ -2254,12 +2268,18 @@
                     const tickerContent = document.getElementById('tickerContent');
                     if (!tickerContent) return;
 
-                    // Target items to display in ticker
-                    const tickerSymbols = [
-                        'XAUUSD', 'IR_GOLD_18K', 'IR_GOLD_24K',
-                        'IR_COIN_EMAMI', 'IR_COIN_BAHAR',
-                        'USD', 'EUR', 'BTC', 'USDT'
-                    ];
+                    // Target items with Persian labels
+                    const tickerSymbols = {
+                        'XAUUSD': 'انس طلا',
+                        'IR_GOLD_18K': 'طلا 18',
+                        'IR_GOLD_24K': 'طلا 24',
+                        'IR_COIN_EMAMI': 'سکه امامی',
+                        'IR_COIN_BAHAR': 'بهار آزادی',
+                        'USD': 'دلار آمریکا',
+                        'EUR': 'یورو',
+                        'BTC': 'بیت کوین',
+                        'USDT': 'تتر'
+                    };
 
                     let tickerItems = [];
 
@@ -2277,7 +2297,7 @@
 
                         // Filter for target items
                         searchArrays.forEach(item => {
-                            if (item && item.symbol && tickerSymbols.includes(item.symbol)) {
+                            if (item && item.symbol && tickerSymbols[item.symbol]) {
                                 // Avoid duplicates
                                 if (!tickerItems.find(t => t.symbol === item.symbol)) {
                                     tickerItems.push(item);
@@ -2287,8 +2307,9 @@
                     }
 
                     // Sort ticker items in the order specified
+                    const symbolOrder = Object.keys(tickerSymbols);
                     const sortedItems = [];
-                    tickerSymbols.forEach(symbol => {
+                    symbolOrder.forEach(symbol => {
                         const item = tickerItems.find(t => t.symbol === symbol);
                         if (item) sortedItems.push(item);
                     });
@@ -2308,20 +2329,23 @@
                             maximumFractionDigits: 2
                         });
 
-                        // Get display name (use Persian name if available, fallback to symbol)
-                        const displayName = item.name || item.symbol;
+                        // Get Persian subtitle
+                        const subtitle = tickerSymbols[item.symbol] || item.name || item.symbol;
 
                         tickerHTML += `
                             <div class="ticker-item">
-                                <span class="ticker-symbol" title="${displayName}">${item.symbol}</span>
+                                <div class="ticker-header">
+                                    <span class="ticker-symbol">${item.symbol}</span>
+                                </div>
+                                <span class="ticker-subtitle">${subtitle}</span>
                                 <span class="ticker-price">${formattedPrice} تومان</span>
                                 <span class="ticker-change ${changeClass}">${changeEmoji} ${Math.abs(change).toFixed(2)}%</span>
                             </div>
                         `;
                     });
 
-                    // Duplicate content for seamless infinite scroll effect
-                    tickerHTML += tickerHTML;
+                    // Triple duplicate content for seamless infinite scroll effect
+                    tickerHTML = tickerHTML + tickerHTML + tickerHTML;
 
                     tickerContent.innerHTML = tickerHTML;
                 }
