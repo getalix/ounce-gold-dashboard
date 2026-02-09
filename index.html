@@ -378,100 +378,6 @@
             color: #999;
         }
 
-        /* ===== Price Ticker/Marquee ===== */
-        .price-ticker {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 4px 0;
-            margin: 10px 0;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-
-        .ticker-content {
-            display: flex;
-            gap: 12px;
-            padding: 0 0;
-            /* duration controlled via CSS variable to keep pixel speed constant when repeating content */
-            animation: scroll-left var(--ticker-duration, 20s) linear infinite !important;
-            white-space: nowrap;
-            will-change: transform;
-        }
-
-        .ticker-content:hover {
-            /* Ensure animation doesn't pause on hover in any UA */
-            animation-play-state: running !important;
-        }
-
-        @keyframes scroll-left {
-            0% {
-                transform: translateX(100%);
-            }
-
-            100% {
-                transform: translateX(-100%);
-            }
-        }
-
-        /* Ensure animation never stops */
-        .ticker-content * {
-            white-space: nowrap;
-        }
-
-        .ticker-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            color: #fff;
-            font-weight: 600;
-            font-size: 12px;
-            min-width: max-content;
-            padding: 5px 12px;
-            background: rgba(30, 30, 60, 0.85);
-            border-radius: 6px;
-            box-shadow: 0 2px 8px rgba(30, 30, 60, 0.15);
-            backdrop-filter: blur(4px);
-            flex-shrink: 0;
-            /* No opacity/fade transitions */
-            opacity: 1 !important;
-            visibility: visible !important;
-        }
-
-        .ticker-symbol {
-            font-weight: 700;
-            opacity: 1;
-            color: #fff;
-            font-size: 11px;
-            color: #bdbdbd;
-            font-weight: 400;
-            margin-top: 1px;
-        }
-
-        .ticker-price {
-            color: #fff;
-            font-weight: 700;
-            font-size: 13px;
-        }
-
-        .ticker-change {
-            font-size: 11px;
-            padding: 2px 5px;
-            border-radius: 4px;
-            background: rgba(255, 255, 255, 0.12);
-        }
-
-        .ticker-change.positive {
-            color: #4ade80;
-        }
-
-        .ticker-change.negative {
-            color: #ff6b6b;
-        }
-
-        body.light-mode .price-ticker {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-
         body.dark-mode .search-input::placeholder {
             color: #aaa;
         }
@@ -1549,13 +1455,6 @@
             </div>
         </div>
 
-        <!-- Price Ticker/Marquee -->
-        <div class="price-ticker">
-            <div class="ticker-content" id="tickerContent">
-                <!-- تیکر قیمت‌های مهم به صورت روان -->
-            </div>
-        </div>
-
         <!-- Loading State -->
         <div class="loading" id="loadingState">
             <div class="spinner"></div>
@@ -1715,6 +1614,64 @@
             </div>
 
             <script>
+                // 🔒 غیرفعال‌سازی Developer Tools و Inspect
+                (function () {
+                    // غیرفعال‌سازی کلیک راست
+                    document.addEventListener('contextmenu', function (e) {
+                        e.preventDefault();
+                        return false;
+                    }, false);
+
+                    // غیرفعال‌سازی کلیدهای میانبر Developer Tools
+                    document.addEventListener('keydown', function (e) {
+                        // F12
+                        if (e.key === 'F12' || e.keyCode === 123) {
+                            e.preventDefault();
+                            return false;
+                        }
+                        // Ctrl+Shift+I (Inspect)
+                        if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.keyCode === 73)) {
+                            e.preventDefault();
+                            return false;
+                        }
+                        // Ctrl+Shift+J (Console)
+                        if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.keyCode === 74)) {
+                            e.preventDefault();
+                            return false;
+                        }
+                        // Ctrl+Shift+C (Inspect Element)
+                        if (e.ctrlKey && e.shiftKey && (e.key === 'C' || e.keyCode === 67)) {
+                            e.preventDefault();
+                            return false;
+                        }
+                        // Ctrl+U (View Source)
+                        if (e.ctrlKey && (e.key === 'U' || e.keyCode === 85)) {
+                            e.preventDefault();
+                            return false;
+                        }
+                        // Ctrl+S (Save)
+                        if (e.ctrlKey && (e.key === 'S' || e.keyCode === 83)) {
+                            e.preventDefault();
+                            return false;
+                        }
+                    }, false);
+
+                    // تشخیص باز شدن DevTools (روش اضافی)
+                    const detectDevTools = () => {
+                        const threshold = 160;
+                        const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+                        const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+
+                        if (widthThreshold || heightThreshold) {
+                            // DevTools احتماالً باز است
+                            document.body.innerHTML = '⛔';
+                        }
+                    };
+
+                    // بررسی دوره‌ای
+                    setInterval(detectDevTools, 1000);
+                })();
+
                 // ⚙️ Cloudflare Worker URL - API Proxy
                 const WORKER_URL = 'https://ons-gold-tg.panytb.workers.dev';
                 // ✅ API Key محفوظ است - در Cloudflare Server ذخیره شده
@@ -2102,7 +2059,7 @@
                 }
 
                 // Smooth scroll to top with custom timing
-                function smoothScrollToTop(duration = 800) {
+                function smoothScrollToTop(duration = 1200) {
                     const start = window.pageYOffset || document.documentElement.scrollTop;
                     const startTime = performance.now();
 
@@ -2216,7 +2173,6 @@
                     } else {
                         document.getElementById('emptyState').style.display = 'none';
                         renderPrices(dataToRender);
-                        updatePriceTicker();
                     }
                 }
 
@@ -2267,173 +2223,6 @@
                     setTimeout(() => {
                         setupImageErrorHandlers();
                     }, 500);
-                }
-
-                // Update Price Ticker with Key Items
-                function updatePriceTicker() {
-                    const tickerContent = document.getElementById('tickerContent');
-                    if (!tickerContent) return;
-
-                    // Target items to display in ticker
-                    const tickerSymbols = [
-                        'XAUUSD', 'IR_GOLD_18K', 'IR_GOLD_24K',
-                        'IR_COIN_EMAMI', 'IR_COIN_BAHAR',
-                        'USD', 'EUR', 'BTC', 'USDT'
-                    ];
-                    // Persian subtitles for each symbol
-                    const tickerSubtitles = {
-                        'XAUUSD': 'انس طلا',
-                        'IR_GOLD_18K': 'طلا ۱۸ عیار',
-                        'IR_GOLD_24K': 'طلا ۲۴ عیار',
-                        'IR_COIN_EMAMI': 'سکه امامی',
-                        'IR_COIN_BAHAR': 'سکه بهار آزادی',
-                        'USD': 'دلار آمریکا',
-                        'EUR': 'یورو',
-                        'BTC': 'بیت‌کوین',
-                        'USDT': 'تتر'
-                    };
-
-                    let tickerItems = [];
-
-                    // Search through allData to find target items
-                    if (allData && typeof allData === 'object') {
-                        // gold, currency, cryptocurrency are flat arrays
-                        const searchArrays = [
-                            ...(allData.gold || []),
-                            ...(allData.currency || []),
-                            ...(allData.cryptocurrency || [])
-                        ];
-
-                        console.log('🔍 All available items:', searchArrays.map(i => i.symbol));
-                        console.log('📍 Looking for:', tickerSymbols);
-
-                        // Filter for target items
-                        searchArrays.forEach(item => {
-                            if (item && item.symbol && tickerSymbols.includes(item.symbol)) {
-                                // Avoid duplicates
-                                if (!tickerItems.find(t => t.symbol === item.symbol)) {
-                                    tickerItems.push(item);
-                                    console.log(`✅ Found: ${item.symbol}`);
-                                }
-                            }
-                        });
-                    }
-
-                    // Sort ticker items in the order specified
-                    const sortedItems = [];
-                    tickerSymbols.forEach(symbol => {
-                        const item = tickerItems.find(t => t.symbol === symbol);
-                        if (item) {
-                            sortedItems.push(item);
-                        } else {
-                            console.warn(`⚠️ Not found: ${symbol}`);
-                        }
-                    });
-                    tickerItems = sortedItems;
-
-                    // Build ticker HTML
-                    let tickerHTML = '';
-                    console.log('🎯 updatePriceTicker - Found items:', tickerItems.map(i => i.symbol));
-                    tickerItems.forEach(item => {
-                        const change = parseFloat(item.change_percent) || 0;
-                        const changeEmoji = change > 0 ? '📈' : change < 0 ? '📉' : '➡️';
-                        const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : 'neutral';
-
-                        // Persian subtitle
-                        const subtitle = tickerSubtitles[item.symbol] || '';
-
-                        let priceDisplay = '';
-                        // نمادین برای BTC و USDT
-                        let icon = '';
-                        if (item.symbol === 'BTC') {
-                            icon = '<span style="font-size:18px;margin-left:4px;">₿</span>';
-                        } else if (item.symbol === 'USDT') {
-                            icon = '<span style="font-size:18px;margin-left:4px;">💵</span>';
-                        }
-
-                        // نمایش قیمت ریالی برای رمزارزها (BTC, USDT, etc.)
-                        if ((item.type === 'crypto' || item.symbol === 'BTC' || item.symbol === 'USDT') && item.price_toman) {
-                            // نمایش قیمت ریالی برای رمزارزها - اعداد انگلیسی
-                            const rialPrice = parseFloat(item.price_toman) || 0;
-                            priceDisplay = `<span class="ticker-price">${rialPrice.toLocaleString('en-US')}</span><span class="unit">ریال</span>`;
-                            console.log(`💰 ${item.symbol}: price_toman = ${item.price_toman}`);
-                        } else if (item.price) {
-                            // سایر نمادها مثل مینی اپ - اعداد انگلیسی
-                            const price = parseFloat(item.price) || 0;
-                            priceDisplay = `<span class="ticker-price">${price.toLocaleString('en-US')}</span><span class="unit">${item.unit || ''}</span>`;
-                            console.log(`💵 ${item.symbol}: price = ${item.price}, unit = ${item.unit}`);
-                        } else {
-                            console.warn(`⚠️ ${item.symbol}: NO PRICE FOUND! item:`, item);
-                        }
-
-                        tickerHTML += `
-                            <div class="ticker-item">
-                                <div style="display:flex;flex-direction:column;align-items:flex-start;">
-                                    <span class="ticker-symbol" title="${item.name || item.symbol}">${icon}${item.symbol}</span>
-                                    <span class="ticker-subtitle" style="font-size:12px;opacity:0.8;">${subtitle}</span>
-                                </div>
-                                ${priceDisplay}
-                                <span class="ticker-change ${changeClass}">${changeEmoji} ${Math.abs(change).toFixed(2)}%</span>
-                            </div>
-                        `;
-                    });
-
-                    // Seamless RTL infinite loop: duplicate content 2 times
-                    // Animation: 100% → -100% (translateX motion for perfect seamless loop)
-                    // When first 50% exits viewport, second 50% seamlessly replaces it
-                    // No gap, no jump, no fade - pure continuous scroll
-                    console.log('📊 tickerHTML length:', tickerHTML.length);
-                    console.log('📝 Ticker items count:', tickerItems.length);
-                    // Insert one copy first to measure width
-                    tickerContent.innerHTML = tickerHTML;
-                    const containerWidth = tickerContent.parentElement ? tickerContent.parentElement.clientWidth : window.innerWidth;
-                    // Measure width of the single copy
-                    let singleWidth = Math.max(1, tickerContent.scrollWidth);
-
-                    // Calculate initial repeats so content fills container (no gaps)
-                    let repeats = Math.max(2, Math.ceil((containerWidth + 20) / singleWidth) + 1);
-
-                    // Build full HTML and ensure total content covers at least twice the container width to avoid gaps
-                    let fullHTML = tickerHTML.repeat(repeats);
-                    tickerContent.innerHTML = fullHTML;
-                    let totalWidth = tickerContent.scrollWidth;
-
-                    // If totalWidth is still less than 2x container, increment repeats until it is, with a safety cap
-                    let safety = 0;
-                    while (totalWidth < containerWidth * 2 && safety < 10) {
-                        repeats++;
-                        fullHTML = tickerHTML.repeat(repeats);
-                        tickerContent.innerHTML = fullHTML;
-                        totalWidth = tickerContent.scrollWidth;
-                        safety++;
-                    }
-                    if (safety > 0) {
-                        console.log('🔧 Adjusted repeats for full coverage. New repeats:', repeats, 'TotalWidth:', totalWidth, 'ContainerWidth:', containerWidth);
-                    }
-
-                    // Adjust animation duration to keep constant pixel speed (base: 2 repeats => 20s)
-                    const durationSeconds = 10 * repeats; // 2 repeats => 20s
-                    tickerContent.style.setProperty('--ticker-duration', `${durationSeconds}s`);
-
-                    // Reset animation to apply new duration and prevent glitches
-                    tickerContent.style.animation = 'none';
-                    void tickerContent.offsetHeight;
-                    tickerContent.style.animation = '';
-                    const itemsCount = tickerContent.querySelectorAll('.ticker-item').length;
-                    console.log('✅ Seamless RTL ticker loaded. Items in DOM:', itemsCount, 'Repeats:', repeats, 'Duration:', `${durationSeconds}s`);
-                    console.log('🔄 Loop type: Infinite seamless', 'Direction: Right-to-Left');
-
-                    // Attach a debounced resize handler once to recalc repeats on viewport changes
-                    if (!window._tickerResizeAttached) {
-                        window._tickerResizeAttached = true;
-                        let resizeTimer;
-                        window.addEventListener('resize', function () {
-                            clearTimeout(resizeTimer);
-                            resizeTimer = setTimeout(() => {
-                                try { updatePriceTicker(); } catch (e) { console.warn('Ticker update failed on resize', e); }
-                            }, 250);
-                        });
-                    }
                 }
 
                 // Create Price Card Element
