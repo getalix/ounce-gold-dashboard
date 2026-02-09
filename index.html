@@ -2061,6 +2061,17 @@
                 // Smooth scroll to top with custom timing
                 function smoothScrollToTop(duration = 1200) {
                     const start = window.pageYOffset || document.documentElement.scrollTop;
+
+                    // برای موبایل و مینی اپ از behavior: 'smooth' استفاده کن
+                    if (isTelegramMiniApp() || window.innerWidth <= 768) {
+                        window.scrollTo({
+                            top: 0,
+                            behavior: 'smooth'
+                        });
+                        return;
+                    }
+
+                    // برای دسکتاپ از انیمیشن دستی استفاده کن
                     const startTime = performance.now();
 
                     const scroll = (currentTime) => {
