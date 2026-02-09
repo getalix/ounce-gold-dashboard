@@ -392,13 +392,15 @@
             display: flex;
             gap: 12px;
             padding: 0 0;
-            animation: scroll-left 30s linear infinite;
+            /* duration controlled via CSS variable to keep pixel speed constant when repeating content */
+            animation: scroll-left var(--ticker-duration, 20s) linear infinite !important;
             white-space: nowrap;
             will-change: transform;
         }
 
         .ticker-content:hover {
-            animation-play-state: paused;
+            /* Ensure animation doesn't pause on hover in any UA */
+            animation-play-state: running !important;
         }
 
         @keyframes scroll-left {
@@ -409,6 +411,11 @@
             100% {
                 transform: translateX(-100%);
             }
+        }
+
+        /* Ensure animation never stops */
+        .ticker-content * {
+            white-space: nowrap;
         }
 
         .ticker-item {
@@ -425,6 +432,9 @@
             box-shadow: 0 2px 8px rgba(30, 30, 60, 0.15);
             backdrop-filter: blur(4px);
             flex-shrink: 0;
+            /* No opacity/fade transitions */
+            opacity: 1 !important;
+            visibility: visible !important;
         }
 
         .ticker-symbol {
@@ -2368,15 +2378,62 @@
                         `;
                     });
 
-                    // Seamless loop: duplicate content 2 times for true seamless infinite scroll
-                    // Animation goes 0% to -100%, so content repeats 2x without jumping
+                    // Seamless RTL infinite loop: duplicate content 2 times
+                    // Animation: 100% → -100% (translateX motion for perfect seamless loop)
+                    // When first 50% exits viewport, second 50% seamlessly replaces it
+                    // No gap, no jump, no fade - pure continuous scroll
                     console.log('📊 tickerHTML length:', tickerHTML.length);
                     console.log('📝 Ticker items count:', tickerItems.length);
-                    const fullHTML = tickerHTML.repeat(2);
+                    // Insert one copy first to measure width
+                    tickerContent.innerHTML = tickerHTML;
+                    const containerWidth = tickerContent.parentElement ? tickerContent.parentElement.clientWidth : window.innerWidth;
+                    // Measure width of the single copy
+                    let singleWidth = Math.max(1, tickerContent.scrollWidth);
+
+                    // Calculate initial repeats so content fills container (no gaps)
+                    let repeats = Math.max(2, Math.ceil((containerWidth + 20) / singleWidth) + 1);
+
+                    // Build full HTML and ensure total content covers at least twice the container width to avoid gaps
+                    let fullHTML = tickerHTML.repeat(repeats);
                     tickerContent.innerHTML = fullHTML;
+                    let totalWidth = tickerContent.scrollWidth;
+
+                    // If totalWidth is still less than 2x container, increment repeats until it is, with a safety cap
+                    let safety = 0;
+                    while (totalWidth < containerWidth * 2 && safety < 10) {
+                        repeats++;
+                        fullHTML = tickerHTML.repeat(repeats);
+                        tickerContent.innerHTML = fullHTML;
+                        totalWidth = tickerContent.scrollWidth;
+                        safety++;
+                    }
+                    if (safety > 0) {
+                        console.log('🔧 Adjusted repeats for full coverage. New repeats:', repeats, 'TotalWidth:', totalWidth, 'ContainerWidth:', containerWidth);
+                    }
+
+                    // Adjust animation duration to keep constant pixel speed (base: 2 repeats => 20s)
+                    const durationSeconds = 10 * repeats; // 2 repeats => 20s
+                    tickerContent.style.setProperty('--ticker-duration', `${durationSeconds}s`);
+
+                    // Reset animation to apply new duration and prevent glitches
+                    tickerContent.style.animation = 'none';
+                    void tickerContent.offsetHeight;
+                    tickerContent.style.animation = '';
                     const itemsCount = tickerContent.querySelectorAll('.ticker-item').length;
-                    console.log('✅ Ticker content updated. Items in DOM:', itemsCount);
-                    console.log('Expected items (9 * 2):', 9 * 2, ' Actual:', itemsCount);
+                    console.log('✅ Seamless RTL ticker loaded. Items in DOM:', itemsCount, 'Repeats:', repeats, 'Duration:', `${durationSeconds}s`);
+                    console.log('🔄 Loop type: Infinite seamless', 'Direction: Right-to-Left');
+
+                    // Attach a debounced resize handler once to recalc repeats on viewport changes
+                    if (!window._tickerResizeAttached) {
+                        window._tickerResizeAttached = true;
+                        let resizeTimer;
+                        window.addEventListener('resize', function () {
+                            clearTimeout(resizeTimer);
+                            resizeTimer = setTimeout(() => {
+                                try { updatePriceTicker(); } catch (e) { console.warn('Ticker update failed on resize', e); }
+                            }, 250);
+                        });
+                    }
                 }
 
                 // Create Price Card Element
